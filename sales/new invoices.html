@@ -271,6 +271,12 @@
         </tbody>
       </table>
       <button class="add-item-button" id="addItemButton">Add Item</button>
+      <div id="totalSummary">
+        <p><strong>Subtotal:</strong> $<span id="subtotal">0.00</span></p>
+        <p><strong>Discount:</strong> $<span id="discount">0.00</span></p>
+        <p><strong>Sales Tax (6%):</strong> $<span id="salesTax">0.00</span></p>
+        <p><strong>Total (after tax & discount):</strong> $<span id="finalTotal">0.00</span></p>
+      </div>
     </div>
   </section>
 
@@ -299,6 +305,9 @@
   </div>
 
   <script>
+    let customerType = 'Retail'; // Default is Retail
+    let productTypeDiscounted = false;
+
     // Function to generate a unique invoice number
     function generateInvoiceNumber() {
       const invoiceNumber = 'INV-' + Math.floor(Math.random() * 1000000);
@@ -330,6 +339,7 @@
       if (customer) {
         document.getElementById("customerDetails").style.display = "block";
         document.getElementById("customerInfo").innerText = `Name: ${customer.name}, Type: ${customer.customerType}, Business: ${customer.businessType}`;
+        customerType = customer.businessType; // Set the customer type (Retail or Restaurant)
         document.getElementById("addNewCustomer").style.display = "none";
       } else {
         document.getElementById("customerDetails").style.display = "none";
@@ -399,6 +409,46 @@
       total += kegDeposit;
 
       row.querySelector('.total-price').textContent = `$${total.toFixed(2)}`;
+      updateInvoiceSummary();
+    }
+
+    // Update Invoice Summary (Subtotal, Discount, Tax, Total)
+    function updateInvoiceSummary() {
+      let subtotal = 0;
+      let caseQuantity = 0;
+
+      // Calculate Subtotal and check for cases
+      const rows = document.querySelectorAll('#invoiceItemsTable tbody tr');
+      rows.forEach(row => {
+        const total = parseFloat(row.querySelector('.total-price').textContent.replace('$', '')) || 0;
+        subtotal += total;
+
+        // Count cases for discount logic
+        const productType = Array.from(row.querySelectorAll('select option:checked'))
+                                  .map(option => option.textContent);
+        caseQuantity += productType.filter(type => type === "Case").length;
+      });
+
+      // Apply discount if there are 10 or more cases
+      let discount = 0;
+      if (caseQuantity >= 10) {
+        discount = subtotal * 0.1; // 10% discount
+      }
+
+      // Apply sales tax if restaurant
+      let salesTax = 0;
+      if (customerType === 'Restaurant') {
+        salesTax = (subtotal - discount) * 0.06; // 6% tax
+      }
+
+      // Final total
+      const finalTotal = subtotal - discount + salesTax;
+
+      // Update the UI with the calculated values
+      document.getElementById('subtotal').textContent = subtotal.toFixed(2);
+      document.getElementById('discount').textContent = discount.toFixed(2);
+      document.getElementById('salesTax').textContent = salesTax.toFixed(2);
+      document.getElementById('finalTotal').textContent = finalTotal.toFixed(2);
     }
 
   </script>
