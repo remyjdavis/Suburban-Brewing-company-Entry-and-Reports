@@ -33,26 +33,45 @@
     .sidebar h2 {
       margin: 0 20px 20px;
       font-size: 18px;
+      font-weight: 600;
     }
 
     .nav-section-title {
       font-size: 12px;
+      text-transform: uppercase;
       opacity: 0.6;
-      margin: 0 20px 8px;
+      margin: 16px 20px 8px;
     }
 
     .nav-link {
+      position: relative;
       display: block;
-      padding: 10px 20px;
+      padding: 10px 20px 10px 24px;
       color: #d1d5db;
       text-decoration: none;
       font-size: 14px;
+      transition: background 0.15s ease, color 0.15s ease;
     }
 
-    .nav-link:hover,
+    .nav-link:hover {
+      background: #374151;
+      color: #ffffff;
+    }
+
     .nav-link.active {
       background: #374151;
       color: #ffffff;
+      font-weight: 500;
+    }
+
+    .nav-link.active::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 4px;
+      height: 100%;
+      background: #3b82f6;
     }
 
     /* ===== Main ===== */
@@ -62,6 +81,7 @@
       flex-direction: column;
     }
 
+    /* ===== Top Bar ===== */
     .topbar {
       background: #ffffff;
       border-bottom: 1px solid #e5e7eb;
@@ -71,13 +91,20 @@
     .topbar h1 {
       margin: 0;
       font-size: 20px;
+      font-weight: 600;
     }
 
+    .breadcrumb {
+      font-size: 13px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    /* ===== Content ===== */
     .content {
       padding: 24px;
     }
 
-    /* ===== Sections ===== */
     .section {
       background: #ffffff;
       border-radius: 8px;
@@ -88,7 +115,9 @@
 
     .section h2 {
       margin-top: 0;
+      margin-bottom: 16px;
       font-size: 16px;
+      font-weight: 600;
     }
 
     .form-grid {
@@ -100,35 +129,51 @@
     label {
       font-size: 12px;
       font-weight: 600;
-      display: block;
       margin-bottom: 4px;
+      display: block;
     }
 
     input, select {
       width: 100%;
-      padding: 8px;
+      padding: 8px 10px;
       border-radius: 6px;
       border: 1px solid #d1d5db;
+      font-size: 14px;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #2563eb;
     }
 
     button {
-      padding: 10px 14px;
+      padding: 10px 16px;
       border-radius: 6px;
       border: none;
       background: #2563eb;
       color: #ffffff;
       cursor: pointer;
       font-size: 14px;
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
     }
 
     button.secondary {
       background: #6b7280;
     }
 
+    button.secondary:hover {
+      background: #4b5563;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 16px;
+      margin-top: 12px;
     }
 
     th, td {
@@ -139,6 +184,7 @@
 
     th {
       background: #f9fafb;
+      font-weight: 600;
       text-align: left;
     }
 
@@ -146,6 +192,12 @@
       display: flex;
       gap: 12px;
       margin-top: 16px;
+    }
+
+    .empty-note {
+      font-size: 13px;
+      color: #6b7280;
+      margin-top: 8px;
     }
   </style>
 </head>
@@ -176,6 +228,7 @@
 
     <header class="topbar">
       <h1>Invoices</h1>
+      <div class="breadcrumb">Sales / Invoices</div>
     </header>
 
     <section class="content">
@@ -183,6 +236,7 @@
       <!-- LOAD / CREATE -->
       <div class="section">
         <h2>Load or Create Invoice</h2>
+
         <div class="form-grid">
           <div>
             <label>Invoice Number</label>
@@ -227,13 +281,17 @@
           </thead>
           <tbody id="itemsBody">
             <tr>
-              <td><input></td>
-              <td><input type="number"></td>
-              <td><input type="number"></td>
+              <td><input placeholder="Product name"></td>
+              <td><input type="number" min="0"></td>
+              <td><input type="number" min="0" step="0.01"></td>
               <td>$0.00</td>
             </tr>
           </tbody>
         </table>
+
+        <div class="empty-note">
+          Add products to calculate invoice totals.
+        </div>
 
         <div class="actions">
           <button onclick="addRow()">Add Item</button>
@@ -242,7 +300,6 @@
       </div>
 
     </section>
-
   </div>
 </div>
 
@@ -253,20 +310,20 @@
   function addRow() {
     const row = `
       <tr>
-        <td><input></td>
-        <td><input type="number"></td>
-        <td><input type="number"></td>
+        <td><input placeholder="Product name"></td>
+        <td><input type="number" min="0"></td>
+        <td><input type="number" min="0" step="0.01"></td>
         <td>$0.00</td>
       </tr>`;
     document.getElementById("itemsBody").insertAdjacentHTML("beforeend", row);
   }
 
   function createInvoice() {
-    alert("New invoice initialized (backend coming next).");
+    alert("New invoice initialized. Backend connection coming next.");
   }
 
   function loadInvoice() {
-    alert("Invoice loading logic will connect to backend.");
+    alert("Invoice loading will connect to Google Sheets backend.");
   }
 </script>
 </body>
