@@ -91,15 +91,15 @@
       <div class="form-grid">
         <div>
           <label>Invoice #</label>
-          <input type="text" id="invoiceNumber" readonly>
+          <input type="text" id="invoiceNumber" value="" />
         </div>
         <div>
           <label>Invoice Date</label>
-          <input type="date" id="invoiceDate">
+          <input type="date" id="invoiceDate" />
         </div>
         <div>
           <label>Customer</label>
-          <input placeholder="Search customer">
+          <input placeholder="Search customer" />
         </div>
         <div>
           <label>Sales Type</label>
@@ -129,11 +129,11 @@
     function generateInvoiceNumber() {
       const invoiceNumber = 'INV-' + Math.floor(Math.random() * 1000000);
       document.getElementById('invoiceNumber').value = invoiceNumber;
+      generateBarcode(invoiceNumber); // Generate barcode after setting the invoice number
     }
 
     // Function to generate the barcode based on the invoice number
-    function generateBarcode() {
-      const invoiceNumber = document.getElementById('invoiceNumber').value;
+    function generateBarcode(invoiceNumber) {
       JsBarcode("#barcode", invoiceNumber, {
         format: "CODE128",
         displayValue: true,
@@ -143,9 +143,14 @@
 
     // Initialize the page by generating the invoice number and barcode
     window.onload = function() {
-      generateInvoiceNumber();
-      generateBarcode();
+      generateInvoiceNumber();  // Generate on page load
+      document.getElementById('invoiceDate').value = new Date().toISOString().split('T')[0];  // Set current date
     };
+
+    // Update barcode when the invoice number is changed manually
+    document.getElementById('invoiceNumber').addEventListener('input', function() {
+      generateBarcode(this.value);  // Update the barcode
+    });
   </script>
 </body>
 </html>
