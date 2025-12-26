@@ -278,6 +278,27 @@
       `;
     });
 
+    // Update the quantity fields when product types are selected
+    function updateQuantityInputs(selectElement) {
+      const quantityContainer = selectElement.closest('td').querySelector('.quantity-inputs');
+      quantityContainer.innerHTML = ''; // Clear existing quantity inputs
+
+      const selectedOptions = Array.from(selectElement.selectedOptions);
+      selectedOptions.forEach(option => {
+        const inputDiv = document.createElement('div');
+        const label = document.createElement('label');
+        label.textContent = `Quantity for ${option.textContent}:`;
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.min = 1;
+        input.value = 1;
+        input.addEventListener('input', updateTotal);
+        inputDiv.appendChild(label);
+        inputDiv.appendChild(input);
+        quantityContainer.appendChild(inputDiv);
+      });
+    }
+
     // Update the total for the invoice based on quantity and price
     function updateTotal() {
       const row = this.closest('tr');
