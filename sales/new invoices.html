@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <title>New Invoice | Suburban Brewing Company</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script> <!-- jsPDF Library -->
 
@@ -236,63 +235,166 @@
   <script>
     const { jsPDF } = window.jspdf; // Use jsPDF from the CDN
 
-    // Generate a PDF from the invoice
+    let customerType = 'Retail'; // Default is Retail
+
+    // Function to generate a unique invoice number
+    function generateInvoiceNumber() {
+      const invoiceNumber = 'INV-' + Math.floor(Math.random() * 1000000);
+      document.getElementById('invoiceNumber').value = invoiceNumber;
+      generateBarcode(invoiceNumber);
+    }
+
+    // Function to generate the barcode based on the invoice number
+    function generateBarcode(invoiceNumber) {
+      JsBarcode("#barcode", invoiceNumber, {
+        format: "CODE128",
+        displayValue: true,
+        fontSize: 20
+      });
+    }
+
+    // Initialize the page by generating the invoice number and barcode
+    window.onload = function() {
+      generateInvoiceNumber();  
+      document.getElementById('invoiceDate').textContent = new Date().toLocaleDateString();  
+    };
+
+    // Update the quantity inputs for each selected product type
+    function updateQuantityInputs(selectElement) {
+      const quantityContainer = selectElement.closest('td').querySelector('.quantity-inputs');
+      quantityContainer.innerHTML = ''; // Clear existing quantity inputs
+
+      const selectedOptions = Array.from(selectElement.selectedOptions);
+      selectedOptions.forEach(option => {
+        const inputDiv = document.createElement('div');
+        const label = document.createElement('label');
+        label.textContent = `Quantity for ${option.textContent}:`;
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.min = 1;
+        input.value = 1;
+        input.addEventListener('input', updateTotal);
+        inputDiv.appendChild(label);
+        inputDiv.appendChild(input);
+        quantityContainer.appendChild(inputDiv);
+      });
+    }
+
+    // Add a new item to the invoice
+    document.getElementById('addItemButton').addEventListener('click', function() {
+      const table = document.getElementById('invoiceItemsTable').getElementsByTagName('tbody')[0];
+      const newRow = table.insertRow(table.rows.length);
+      newRow.innerHTML = `
+        <td><select><option>Beer A</option><option>Beer B</option><option>Beer C</option></select></td>
+        <td><select multiple onchange="updateQuantityInputs(this)">
+          <option>Case</option><option>Bottle</option><option>1/6 Keg</option><option>1/2 Keg</option>
+        </select><div class="quantity-inputs"></div></td>
+        <td><input type="number" min="1" value="1" class="unit-price" /></td>
+        <td><input type="number" min="0" step="0.01" value="0.00" class="unit-price" /></td>
+        <td><span class="total-price">$0.00</span></td>
+      `;
+    });
+
+    // Update the total for the invoice based on quantity and price
+    function updateTotal() {
+      const row = this.closest('tr');
+      const unitPrice = parseFloat(row.querySelector('.unit-price').value);
+      const quantityInputs = row.querySelectorAll('.quantity-inputs input');
+      
+      let total = 0;
+      quantityInputs.forEach(input => {
+        const quantity = parseInt(input.value) || 0;
+        total += quantity * unitPrice;
+      });
+
+      const kegDeposit = (row.querySelector('select').selectedOptions.length > 0 && 
+                          Array.from(row.querySelector('select').selectedOptions)
+                               .some(option => option.textContent.includes('Keg'))) ? 30 : 0;
+
+      total += kegDeposit;
+
+      row.querySelector('.total-price').textContent = `$${total.toFixed(2)}`;
+      updateInvoiceSummary();
+    }
+
+    // Update the invoice summary with subtotals, discounts, tax, and total
+    function updateInvoiceSummary() {
+      let subtotal = 0;
+      let caseQuantity = 0;
+
+      const rows = document.querySelectorAll('#invoiceItemsTable tbody tr');
+      rows.forEach(row => {
+        const total = parseFloat(row.querySelector('.total-price').textContent.replace('$', '')) || 0;
+        subtotal += total;
+
+        const productType = Array.from(row.querySelectorAll('select option:checked'))
+                                  .map(option => option.textContent);
+        caseQuantity += productType.filter(type => type === "Case").length;
+      }
+
+      let discount = 0;
+      if (caseQuantity >= 10) {
+        discount = subtotal * 0.1;
+      }
+
+      let salesTax = 0;
+      if (customerType === 'Restaurant') {
+        salesTax = (subtotal - discount) * 0.06;
+      }
+
+      const finalTotal = subtotal - discount + salesTax;
+
+      document.getElementById('subtotal').textContent = subtotal.toFixed(2);
+      document.getElementById('discount').textContent = discount.toFixed(2);
+      document.getElementById('salesTax').textContent = salesTax.toFixed(2);
+      document.getElementById('finalTotal').textContent = finalTotal.toFixed(2);
+    }
+
+    // Generate a PDF of the invoice
     function generatePDF() {
       const doc = new jsPDF();
-      
       const invoiceNumber = document.getElementById('invoiceNumber').value;
       const invoiceDate = document.getElementById('invoiceDate').textContent;
       const finalTotal = document.getElementById('finalTotal').textContent;
-      
-      // Title
+
       doc.setFontSize(20);
       doc.text("Invoice", 20, 20);
-      
-      // Company info
+
       doc.setFontSize(12);
       doc.text("Suburban Brewing Company", 20, 30);
       doc.text("3041 Horseshoe Pike Suite 120 & 130", 20, 35);
       doc.text("Honey Brook, PA 19344", 20, 40);
       doc.text("Sales Rep: Remy Davis | Phone: 9086421019", 20, 45);
       doc.text("Email: Remyjdavis90@gmail.com", 20, 50);
-
-      // Invoice number and date
       doc.text(`Invoice #: ${invoiceNumber}`, 150, 30);
       doc.text(`Date: ${invoiceDate}`, 150, 35);
-      
-      // Invoice items table
-      doc.autoTable({ 
-        html: '#invoiceItemsTable', 
-        startY: 60, 
-        theme: 'grid' 
-      });
-      
-      // Total
-      doc.text(`Total: $${finalTotal}`, 150, doc.lastAutoTable.finalY + 10);
 
+      doc.autoTable({ html: '#invoiceItemsTable', startY: 60, theme: 'grid' });
+
+      doc.text(`Total: $${finalTotal}`, 150, doc.lastAutoTable.finalY + 10);
       return doc;
     }
 
-    // Save the invoice as a PDF to Google Drive (simulated placeholder for backend integration)
+    // Save invoice as PDF (for backend integration)
     function saveInvoice() {
       const pdf = generatePDF();
-      const pdfData = pdf.output('arraybuffer'); // Use array buffer for backend upload
+      const pdfData = pdf.output('arraybuffer');
       console.log("Saving invoice as PDF...");
-      // Placeholder: Save to Google Drive here
+      // Placeholder: Save PDF to Google Drive
       // google.script.run.saveInvoiceToDrive(pdfData, invoiceNumber);
     }
 
-    // Send the invoice via email (simulated placeholder for backend integration)
+    // Send invoice as PDF via email (for backend integration)
     function sendInvoiceEmail() {
       const pdf = generatePDF();
-      const pdfData = pdf.output('arraybuffer'); // Use array buffer for backend email attachment
+      const pdfData = pdf.output('arraybuffer');
       const email = prompt("Please enter the email address:");
       console.log("Sending invoice via email...");
-      // Placeholder: Send email with PDF attachment
+      // Placeholder: Send PDF via email
       // google.script.run.sendInvoiceByEmail(email, pdfData, invoiceNumber);
     }
 
-    // Print the invoice
+    // Print the invoice as PDF
     function printInvoice() {
       const pdf = generatePDF();
       pdf.autoPrint();
