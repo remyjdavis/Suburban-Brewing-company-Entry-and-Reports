@@ -63,7 +63,7 @@
     .invoice-details {
       display: flex;
       flex-direction: column;
-      align-items: flex-end; /* Aligns content to the right */
+      align-items: flex-end; /* Align content to the right */
       margin-bottom: 20px;
     }
 
@@ -71,6 +71,54 @@
       text-align: right; /* Align the input fields to the right */
       width: 200px;
       margin-bottom: 10px;
+    }
+
+    /* Customer Search Bar */
+    #customerSearch {
+      width: 100%;  /* Make the search bar fill the container */
+      padding: 12px;
+      margin-bottom: 15px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    /* Invoice Items Table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: right;
+      border: 1px solid #ddd;
+    }
+
+    th {
+      background-color: #f4f4f4;
+    }
+
+    td input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+    }
+
+    .add-item-button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      cursor: pointer;
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+
+    .add-item-button:hover {
+      background-color: #45a049;
     }
 
     /* Modal Styles */
@@ -175,8 +223,38 @@
     </div>
 
     <div class="section">
+      <h2>Search for Customer</h2>
+      <input type="text" id="customerSearch" placeholder="Enter customer name or email" />
+      <button id="searchButton">Search</button>
+      <button id="addNewCustomer" style="display:none;">Add New Customer</button>
+
+      <div id="customerDetails" style="display:none;">
+        <h3>Customer Info:</h3>
+        <p id="customerInfo"></p>
+      </div>
+    </div>
+
+    <div class="section">
       <h2>Invoice Items</h2>
-      <!-- Add Invoice Items Table -->
+      <table id="invoiceItemsTable">
+        <thead>
+          <tr>
+            <th>Product Name</th>
+            <th>Quantity</th>
+            <th>Unit Price</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><input type="text" placeholder="Product Name" /></td>
+            <td><input type="number" min="1" value="1" /></td>
+            <td><input type="number" min="0" step="0.01" value="0.00" /></td>
+            <td><span class="total-price">$0.00</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <button class="add-item-button" id="addItemButton">Add Item</button>
     </div>
   </section>
 
@@ -225,34 +303,54 @@
     window.onload = function() {
       generateInvoiceNumber();  // Generate on page load
       document.getElementById('invoiceDate').textContent = new Date().toLocaleDateString();  // Set current date
-
-      // Open modal when the page loads
-      openCustomerModal();
     };
 
-    // Open the customer modal
-    function openCustomerModal() {
-      document.getElementById("customerModal").style.display = "block";
-    }
+    // Customer Search Logic
+    document.getElementById("searchButton").addEventListener("click", function() {
+      const searchTerm = document.getElementById("customerSearch").value.toLowerCase();
+      const customer = customerDatabase.find(cust => 
+        cust.name.toLowerCase().includes(searchTerm) || cust.email.toLowerCase().includes(searchTerm));
 
-    // Close the modal
+      if (customer) {
+        document.getElementById("customerDetails").style.display = "block";
+        document.getElementById("customerInfo").innerText = `Name: ${customer.name}, Type: ${customer.customerType}, Business: ${customer.businessType}`;
+        document.getElementById("addNewCustomer").style.display = "none";
+      } else {
+        document.getElementById("customerDetails").style.display = "none";
+        document.getElementById("addNewCustomer").style.display = "inline-block";
+      }
+    });
+
+    // Simulated customer database
+    const customerDatabase = [
+      { name: "John Doe", email: "johndoe@example.com", customerType: "Check Customer", businessType: "Retail" },
+      { name: "Jane Smith", email: "janesmith@example.com", customerType: "Fintech Customer", businessType: "Restaurant" }
+    ];
+
+    // Add New Item to Invoice
+    document.getElementById('addItemButton').addEventListener('click', function() {
+      const table = document.getElementById('invoiceItemsTable').getElementsByTagName('tbody')[0];
+      const newRow = table.insertRow(table.rows.length);
+      newRow.innerHTML = `
+        <td><input type="text" placeholder="Product Name" /></td>
+        <td><input type="number" min="1" value="1" /></td>
+        <td><input type="number" min="0" step="0.01" value="0.00" /></td>
+        <td><span class="total-price">$0.00</span></td>
+      `;
+    });
+
+    // Modal Logic for Adding Customer Type and Business Type
     document.getElementById("closeCustomerModal").onclick = function() {
       document.getElementById("customerModal").style.display = "none";
     }
 
-    // Submit button for the modal
     document.getElementById("submitCustomerInfo").onclick = function() {
       const customerType = document.querySelector('input[name="customerType"]:checked').value;
       const businessType = document.querySelector('input[name="businessType"]:checked').value;
-      console.log("Customer Type:", customerType);  // Process customer type
-      console.log("Business Type:", businessType);  // Process business type
+      console.log("Customer Type:", customerType);
+      console.log("Business Type:", businessType);
       document.getElementById("customerModal").style.display = "none";  // Close modal
     }
-
-    // Update barcode when the invoice number is changed manually
-    document.getElementById('invoiceNumber').addEventListener('input', function() {
-      generateBarcode(this.value);  // Update the barcode
-    });
   </script>
 </body>
 </html>
