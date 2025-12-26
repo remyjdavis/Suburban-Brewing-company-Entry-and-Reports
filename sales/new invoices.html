@@ -9,45 +9,44 @@
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
 
   <style>
-    /* Styles for Header, Branding, and Layout */
+    /* Header Style */
     .topbar {
       background: #ffffff;
       border-bottom: 1px solid #e5e7eb;
-      padding: 16px 24px;
+      padding: 8px 24px;
       display: flex;
-      flex-direction: column;
       align-items: center;
-      text-align: center;
+      justify-content: flex-start;
+      font-size: 12px;
     }
 
     .brand-container {
       display: flex;
-      flex-direction: column;
       align-items: center;
+      font-size: 12px; /* Compact text size */
     }
 
     .logo {
-      height: 60px;
+      height: 40px; /* Adjust logo size */
       width: auto;
-      margin-bottom: 10px;
+      margin-right: 10px;
     }
 
     .company-details {
-      font-size: 14px;
       color: #6b7280;
-      margin: 5px 0;
+      margin-left: 5px;
     }
 
-    .topbar h1 {
-      font-size: 24px;
-      font-weight: 600;
+    .company-details p {
       margin: 0;
+      line-height: 1.2;
     }
 
     .topbar h2 {
       font-size: 20px;
       font-weight: 500;
       color: #6b7280;
+      margin-left: auto; /* Move invoice title to the right */
     }
 
     /* Form and Invoice Section Styles */
@@ -112,15 +111,15 @@
     <div class="brand-container">
       <!-- Updated Logo Path -->
       <img src="sales/background.jpg" alt="Company Logo" class="logo">
-      <h1>Suburban Brewing Company</h1>
       <div class="company-details">
-        <p>Address: 3041 Horseshoe Pike Suite 120 & 130, Honey Brook, PA 19344</p>
+        <p>Suburban Brewing Company</p>
+        <p>3041 Horseshoe Pike Suite 120 & 130</p>
+        <p>Honey Brook, PA 19344</p>
         <p>Sales Rep: Remy Davis | Phone: 9086421019</p>
         <p>Email: Remyjdavis90@gmail.com</p>
       </div>
     </div>
     <h2>New Invoice</h2>
-    <div id="today"></div>
   </header>
 
   <!-- Content Section -->
