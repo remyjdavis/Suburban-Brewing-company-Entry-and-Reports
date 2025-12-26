@@ -306,7 +306,7 @@
         const productType = Array.from(row.querySelectorAll('select option:checked'))
                                   .map(option => option.textContent);
         caseQuantity += productType.filter(type => type === "Case").length;
-      });
+      }
 
       let discount = 0;
       if (caseQuantity >= 10) {
