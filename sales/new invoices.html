@@ -205,9 +205,8 @@
                 <option>1/6 Keg</option>
                 <option>1/2 Keg</option>
               </select>
-              <div class="quantity-inputs"></div>
             </td>
-            <td><input type="number" min="1" value="1" class="unit-price" /></td>
+            <td><div class="quantity-inputs"></div></td>
             <td><input type="number" min="0" step="0.01" value="0.00" class="unit-price" /></td>
             <td><span class="total-price">$0.00</span></td>
           </tr>
@@ -259,7 +258,7 @@
 
     // Update the quantity inputs for each selected product type
     function updateQuantityInputs(selectElement) {
-      const quantityContainer = selectElement.closest('td').querySelector('.quantity-inputs');
+      const quantityContainer = selectElement.closest('td').nextElementSibling.querySelector('.quantity-inputs');
       quantityContainer.innerHTML = ''; // Clear existing quantity inputs
 
       const selectedOptions = Array.from(selectElement.selectedOptions);
