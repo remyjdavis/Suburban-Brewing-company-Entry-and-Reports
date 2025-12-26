@@ -256,15 +256,16 @@
               </select>
             </td>
             <td>
-              <select multiple>
+              <select multiple onchange="updateQuantityInputs(this)">
                 <option>Case</option>
                 <option>Bottle</option>
                 <option>1/6 Keg</option>
                 <option>1/2 Keg</option>
               </select>
+              <div class="quantity-inputs"></div>
             </td>
-            <td><input type="number" min="1" value="1" /></td>
-            <td><input type="number" min="0" step="0.01" value="0.00" /></td>
+            <td><input type="number" min="1" value="1" class="unit-price" /></td>
+            <td><input type="number" min="0" step="0.01" value="0.00" class="unit-price" /></td>
             <td><span class="total-price">$0.00</span></td>
           </tr>
         </tbody>
@@ -348,25 +349,58 @@
       const newRow = table.insertRow(table.rows.length);
       newRow.innerHTML = `
         <td><select><option>Beer A</option><option>Beer B</option><option>Beer C</option></select></td>
-        <td><select multiple><option>Case</option><option>Bottle</option><option>1/6 Keg</option><option>1/2 Keg</option></select></td>
-        <td><input type="number" min="1" value="1" /></td>
-        <td><input type="number" min="0" step="0.01" value="0.00" /></td>
+        <td><select multiple onchange="updateQuantityInputs(this)">
+          <option>Case</option><option>Bottle</option><option>1/6 Keg</option><option>1/2 Keg</option>
+        </select><div class="quantity-inputs"></div></td>
+        <td><input type="number" min="1" value="1" class="unit-price" /></td>
+        <td><input type="number" min="0" step="0.01" value="0.00" class="unit-price" /></td>
         <td><span class="total-price">$0.00</span></td>
       `;
     });
 
-    // Modal Logic for Adding Customer Type and Business Type
-    document.getElementById("closeCustomerModal").onclick = function() {
-      document.getElementById("customerModal").style.display = "none";
+    // Update Quantity Inputs when product types are selected
+    function updateQuantityInputs(selectElement) {
+      const quantityContainer = selectElement.closest('td').querySelector('.quantity-inputs');
+      quantityContainer.innerHTML = ''; // Clear existing quantity inputs
+
+      const selectedOptions = Array.from(selectElement.selectedOptions);
+      selectedOptions.forEach(option => {
+        const inputDiv = document.createElement('div');
+        const label = document.createElement('label');
+        label.textContent = `Quantity for ${option.textContent}:`;
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.min = 1;
+        input.value = 1;
+        input.addEventListener('input', updateTotal);
+        inputDiv.appendChild(label);
+        inputDiv.appendChild(input);
+        quantityContainer.appendChild(inputDiv);
+      });
     }
 
-    document.getElementById("submitCustomerInfo").onclick = function() {
-      const customerType = document.querySelector('input[name="customerType"]:checked').value;
-      const businessType = document.querySelector('input[name="businessType"]:checked').value;
-      console.log("Customer Type:", customerType);
-      console.log("Business Type:", businessType);
-      document.getElementById("customerModal").style.display = "none";  // Close modal
+    // Update Total based on quantity and price
+    function updateTotal() {
+      const row = this.closest('tr');
+      const unitPrice = parseFloat(row.querySelector('.unit-price').value);
+      const quantityInputs = row.querySelectorAll('.quantity-inputs input');
+      
+      let total = 0;
+      quantityInputs.forEach(input => {
+        const quantity = parseInt(input.value) || 0;
+        total += quantity * unitPrice;
+      });
+
+      // Add Keg Deposit if 1/6 or 1/2 Keg is selected
+      const kegDeposit = (row.querySelector('select').selectedOptions.length > 0 && 
+                          Array.from(row.querySelector('select').selectedOptions)
+                               .some(option => option.textContent.includes('Keg'))) ? 30 : 0;
+
+      total += kegDeposit;
+
+      row.querySelector('.total-price').textContent = `$${total.toFixed(2)}`;
     }
+
   </script>
 </body>
 </html>
