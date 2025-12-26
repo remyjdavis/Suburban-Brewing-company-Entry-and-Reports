@@ -235,8 +235,6 @@
   <script>
     const { jsPDF } = window.jspdf; // Use jsPDF from the CDN
 
-    let customerType = 'Retail'; // Default is Retail
-
     // Function to generate a unique invoice number
     function generateInvoiceNumber() {
       const invoiceNumber = 'INV-' + Math.floor(Math.random() * 1000000);
@@ -350,6 +348,25 @@
       document.getElementById('finalTotal').textContent = finalTotal.toFixed(2);
     }
 
+    // Save invoice as PDF (for backend integration)
+    function saveInvoice() {
+      const pdf = generatePDF();
+      const pdfData = pdf.output('arraybuffer');
+      console.log("Saving invoice as PDF...");
+      // Placeholder: Save PDF to Google Drive
+      // google.script.run.saveInvoiceToDrive(pdfData, invoiceNumber);
+    }
+
+    // Send invoice as PDF via email (for backend integration)
+    function sendInvoiceEmail() {
+      const pdf = generatePDF();
+      const pdfData = pdf.output('arraybuffer');
+      const email = prompt("Please enter the email address:");
+      console.log("Sending invoice via email...");
+      // Placeholder: Send PDF via email
+      // google.script.run.sendInvoiceByEmail(email, pdfData, invoiceNumber);
+    }
+
     // Generate a PDF of the invoice
     function generatePDF() {
       const doc = new jsPDF();
@@ -373,25 +390,6 @@
 
       doc.text(`Total: $${finalTotal}`, 150, doc.lastAutoTable.finalY + 10);
       return doc;
-    }
-
-    // Save invoice as PDF (for backend integration)
-    function saveInvoice() {
-      const pdf = generatePDF();
-      const pdfData = pdf.output('arraybuffer');
-      console.log("Saving invoice as PDF...");
-      // Placeholder: Save PDF to Google Drive
-      // google.script.run.saveInvoiceToDrive(pdfData, invoiceNumber);
-    }
-
-    // Send invoice as PDF via email (for backend integration)
-    function sendInvoiceEmail() {
-      const pdf = generatePDF();
-      const pdfData = pdf.output('arraybuffer');
-      const email = prompt("Please enter the email address:");
-      console.log("Sending invoice via email...");
-      // Placeholder: Send PDF via email
-      // google.script.run.sendInvoiceByEmail(email, pdfData, invoiceNumber);
     }
 
     // Print the invoice as PDF
