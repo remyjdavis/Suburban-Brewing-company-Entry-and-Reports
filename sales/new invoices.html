@@ -59,11 +59,18 @@
       font-weight: 600;
     }
 
+    /* Aligning Invoice Details */
     .invoice-details {
       display: flex;
       flex-direction: column;
-      align-items: flex-end;
+      align-items: flex-end; /* Aligns content to the right */
       margin-bottom: 20px;
+    }
+
+    .invoice-details input {
+      text-align: right; /* Align the input fields to the right */
+      width: 200px;
+      margin-bottom: 10px;
     }
 
     /* Modal Styles */
@@ -131,6 +138,7 @@
       text-decoration: none;
       cursor: pointer;
     }
+
   </style>
 </head>
 
@@ -154,48 +162,16 @@
   <section class="content">
     <div class="section">
       <h2>Invoice Details</h2>
-      
-      <!-- Customer Search and Add New -->
       <div class="invoice-details">
-        <label>Search for Customer</label>
-        <input type="text" id="customerSearch" placeholder="Enter customer name or email" />
-        <button id="searchButton">Search</button>
-        <button id="addNewCustomer" style="display:none;">Add New Customer</button>
+        <label>Invoice #</label>
+        <input type="text" id="invoiceNumber" value="" readonly />
+        
+        <!-- Barcode -->
+        <div id="barcode"></div>
+        
+        <!-- Invoice Date -->
+        <div class="invoice-date" id="invoiceDate"></div>
       </div>
-
-      <div id="customerDetails" style="display:none;">
-        <h3>Customer Info:</h3>
-        <p id="customerInfo"></p>
-      </div>
-
-      <div id="customerModal" class="modal">
-        <div class="modal-content">
-          <span class="close" id="closeCustomerModal">&times;</span>
-          <h2>Customer Information</h2>
-          <label>1. Is the customer a Check Customer or Fintech Customer?</label>
-          <div>
-            <input type="radio" id="checkCustomer" name="customerType" value="Check Customer" checked>
-            <label for="checkCustomer">Check Customer</label><br>
-            <input type="radio" id="fintechCustomer" name="customerType" value="Fintech Customer">
-            <label for="fintechCustomer">Fintech Customer</label><br>
-          </div>
-
-          <label>2. What is the business type?</label>
-          <div>
-            <input type="radio" id="retail" name="businessType" value="Retail" checked>
-            <label for="retail">Retail</label><br>
-            <input type="radio" id="restaurant" name="businessType" value="Restaurant">
-            <label for="restaurant">Restaurant</label><br>
-          </div>
-          <button id="submitCustomerInfo">Submit</button>
-        </div>
-      </div>
-
-      <!-- Invoice Number, Barcode, and Date -->
-      <label>Invoice #</label>
-      <input type="text" id="invoiceNumber" value="" readonly />
-      <div id="barcode"></div>
-      <div class="invoice-date" id="invoiceDate"></div>
     </div>
 
     <div class="section">
@@ -204,53 +180,31 @@
     </div>
   </section>
 
+  <!-- Modal for Customer Type and Business Type -->
+  <div id="customerModal" class="modal">
+    <div class="modal-content">
+      <span class="close" id="closeCustomerModal">&times;</span>
+      <h2>Customer Information</h2>
+      <label>1. Is the customer a Check Customer or Fintech Customer?</label>
+      <div>
+        <input type="radio" id="checkCustomer" name="customerType" value="Check Customer" checked>
+        <label for="checkCustomer">Check Customer</label><br>
+        <input type="radio" id="fintechCustomer" name="customerType" value="Fintech Customer">
+        <label for="fintechCustomer">Fintech Customer</label><br>
+      </div>
+
+      <label>2. What is the business type?</label>
+      <div>
+        <input type="radio" id="retail" name="businessType" value="Retail" checked>
+        <label for="retail">Retail</label><br>
+        <input type="radio" id="restaurant" name="businessType" value="Restaurant">
+        <label for="restaurant">Restaurant</label><br>
+      </div>
+      <button id="submitCustomerInfo">Submit</button>
+    </div>
+  </div>
+
   <script>
-    // Simulated customer database
-    const customerDatabase = [
-      { name: "John Doe", email: "johndoe@example.com", customerType: "Check Customer", businessType: "Retail" },
-      { name: "Jane Smith", email: "janesmith@example.com", customerType: "Fintech Customer", businessType: "Restaurant" }
-    ];
-
-    // Function to search for customer
-    document.getElementById("searchButton").addEventListener("click", function() {
-      const searchTerm = document.getElementById("customerSearch").value.toLowerCase();
-      const customer = customerDatabase.find(cust => 
-        cust.name.toLowerCase().includes(searchTerm) || cust.email.toLowerCase().includes(searchTerm));
-
-      if (customer) {
-        document.getElementById("customerDetails").style.display = "block";
-        document.getElementById("customerInfo").innerText = `Name: ${customer.name}, Type: ${customer.customerType}, Business: ${customer.businessType}`;
-        document.getElementById("addNewCustomer").style.display = "none";
-      } else {
-        document.getElementById("customerDetails").style.display = "none";
-        document.getElementById("addNewCustomer").style.display = "inline-block";
-      }
-    });
-
-    // Open the modal when "Add New Customer" is clicked
-    document.getElementById("addNewCustomer").addEventListener("click", function() {
-      openCustomerModal();
-    });
-
-    // Open the customer modal
-    function openCustomerModal() {
-      document.getElementById("customerModal").style.display = "block";
-    }
-
-    // Close the customer modal
-    document.getElementById("closeCustomerModal").onclick = function() {
-      document.getElementById("customerModal").style.display = "none";
-    }
-
-    // Submit the customer info
-    document.getElementById("submitCustomerInfo").onclick = function() {
-      const customerType = document.querySelector('input[name="customerType"]:checked').value;
-      const businessType = document.querySelector('input[name="businessType"]:checked').value;
-      console.log("Customer Type:", customerType); // Handle customer type
-      console.log("Business Type:", businessType); // Handle business type
-      document.getElementById("customerModal").style.display = "none"; // Close modal
-    };
-
     // Function to generate a unique invoice number
     function generateInvoiceNumber() {
       const invoiceNumber = 'INV-' + Math.floor(Math.random() * 1000000);
@@ -271,7 +225,29 @@
     window.onload = function() {
       generateInvoiceNumber();  // Generate on page load
       document.getElementById('invoiceDate').textContent = new Date().toLocaleDateString();  // Set current date
+
+      // Open modal when the page loads
+      openCustomerModal();
     };
+
+    // Open the customer modal
+    function openCustomerModal() {
+      document.getElementById("customerModal").style.display = "block";
+    }
+
+    // Close the modal
+    document.getElementById("closeCustomerModal").onclick = function() {
+      document.getElementById("customerModal").style.display = "none";
+    }
+
+    // Submit button for the modal
+    document.getElementById("submitCustomerInfo").onclick = function() {
+      const customerType = document.querySelector('input[name="customerType"]:checked').value;
+      const businessType = document.querySelector('input[name="businessType"]:checked').value;
+      console.log("Customer Type:", customerType);  // Process customer type
+      console.log("Business Type:", businessType);  // Process business type
+      document.getElementById("customerModal").style.display = "none";  // Close modal
+    }
 
     // Update barcode when the invoice number is changed manually
     document.getElementById('invoiceNumber').addEventListener('input', function() {
