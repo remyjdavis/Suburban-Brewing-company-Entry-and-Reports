@@ -1,259 +1,200 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Suburban Brewing Co – Entry & Reports</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <title>Suburban Brewing Company | Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<style>
-  body {
-    font-family: Arial, Helvetica, sans-serif;
-    background: #f4f6f8;
-    margin: 0;
-    padding: 0;
-    color: #222;
-  }
-
-  header {
-    background: #1f2933;
-    color: #fff;
-    padding: 20px 30px;
-  }
-
-  header h1 {
-    margin: 0;
-    font-size: 26px;
-  }
-
-  header h2 {
-    margin: 5px 0 0;
-    font-size: 14px;
-    font-weight: normal;
-    color: #cbd5e1;
-  }
-
-  main {
-    padding: 30px;
-  }
-
-  section {
-    margin-bottom: 50px;
-  }
-
-  section > h2 {
-    font-size: 22px;
-    margin-bottom: 20px;
-    border-bottom: 2px solid #e5e7eb;
-    padding-bottom: 8px;
-  }
-
-  .card {
-    background: #ffffff;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 25px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-  }
-
-  .card h3 {
-    margin-top: 0;
-    font-size: 18px;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 8px;
-  }
-
-  fieldset {
-    border: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  label {
-    display: block;
-    margin-bottom: 12px;
-    font-size: 14px;
-  }
-
-  input, select, textarea {
-    width: 100%;
-    padding: 8px;
-    margin-top: 4px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
-    font-size: 14px;
-  }
-
-  textarea {
-    resize: vertical;
-    min-height: 70px;
-  }
-
-  button {
-    background: #2563eb;
-    color: #fff;
-    border: none;
-    padding: 10px 16px;
-    font-size: 14px;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-
-  button:hover {
-    background: #1d4ed8;
-  }
-
-  footer {
-    background: #1f2933;
-    color: #cbd5e1;
-    padding: 15px 30px;
-    font-size: 12px;
-  }
-
-  .two-col {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-  }
-
-  @media (max-width: 900px) {
-    .two-col {
-      grid-template-columns: 1fr;
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
-  }
-</style>
+
+    body {
+      margin: 0;
+      background: #f4f6f8;
+      color: #1f2937;
+    }
+
+    /* ===== Layout ===== */
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ===== Sidebar ===== */
+    .sidebar {
+      width: 240px;
+      background: #1f2937;
+      color: #ffffff;
+      padding: 20px 0;
+    }
+
+    .sidebar h2 {
+      margin: 0 20px 20px;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .nav-section {
+      margin-bottom: 24px;
+    }
+
+    .nav-section-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      opacity: 0.6;
+      margin: 0 20px 8px;
+    }
+
+    .nav-link {
+      display: block;
+      padding: 10px 20px;
+      color: #d1d5db;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .nav-link:hover {
+      background: #374151;
+      color: #ffffff;
+    }
+
+    /* ===== Main ===== */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ===== Top Bar ===== */
+    .topbar {
+      background: #ffffff;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .topbar h1 {
+      font-size: 20px;
+      margin: 0;
+      font-weight: 600;
+    }
+
+    .topbar .date {
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    /* ===== Content ===== */
+    .content {
+      padding: 24px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .card p {
+      margin: 0;
+      font-size: 14px;
+      color: #6b7280;
+    }
+  </style>
 </head>
 
 <body>
+  <div class="layout">
 
-<header>
-  <h1>Suburban Brewing Company</h1>
-  <h2>Entry & Reports Dashboard</h2>
-</header>
+    <!-- ===== Sidebar ===== -->
+    <aside class="sidebar">
+      <h2>Suburban Brewing</h2>
 
-<main>
+      <div class="nav-section">
+        <div class="nav-section-title">Dashboard</div>
+        <a class="nav-link" href="index.html">Overview</a>
+      </div>
 
-<section id="sales">
-  <h2>Sales</h2>
+      <div class="nav-section">
+        <div class="nav-section-title">Sales</div>
+        <a class="nav-link" href="sales/invoices.html">Invoices</a>
+        <a class="nav-link" href="sales/leads.html">Sales Leads</a>
+        <a class="nav-link" href="sales/deliveries.html">Deliveries</a>
+        <a class="nav-link" href="sales/sampling.html">Sampling</a>
+      </div>
 
-  <!-- INVOICES -->
-  <div class="card">
-    <h3>Invoices</h3>
-    <div class="two-col">
+      <div class="nav-section">
+        <div class="nav-section-title">Inventory</div>
+        <a class="nav-link" href="inventory/store.html">Store Inventory</a>
+        <a class="nav-link" href="inventory/brewery.html">Brewery Inventory</a>
+      </div>
 
-      <form>
-        <fieldset>
-          <label>
-            Invoice Number
-            <input type="text">
-          </label>
-          <button type="submit">Load Invoice</button>
-        </fieldset>
-      </form>
+      <div class="nav-section">
+        <div class="nav-section-title">Reports</div>
+        <a class="nav-link" href="reports/monthly-sales.html">Monthly Sales</a>
+        <a class="nav-link" href="reports/sales-route.html">Sales Route</a>
+        <a class="nav-link" href="reports/sampling-report.html">Sampling Report</a>
+        <a class="nav-link" href="reports/client-inventory.html">Client Inventory</a>
+      </div>
+    </aside>
 
-      <form>
-        <fieldset>
-          <label>
-            Customer Name
-            <input type="text">
-          </label>
-          <label>
-            Invoice Date
-            <input type="date">
-          </label>
-          <label>
-            Sales Type
-            <select>
-              <option>Retail</option>
-              <option>Restaurant</option>
-              <option>Wholesale</option>
-            </select>
-          </label>
-          <button type="submit">Create Invoice</button>
-        </fieldset>
-      </form>
+    <!-- ===== Main ===== -->
+    <div class="main">
+
+      <!-- Top Bar -->
+      <header class="topbar">
+        <h1>Dashboard Overview</h1>
+        <div class="date" id="today"></div>
+      </header>
+
+      <!-- Content -->
+      <section class="content">
+        <div class="cards">
+          <div class="card">
+            <h3>Sales</h3>
+            <p>Create and manage invoices, leads, deliveries, and sampling.</p>
+          </div>
+
+          <div class="card">
+            <h3>Inventory</h3>
+            <p>Track store and brewery inventory in real time.</p>
+          </div>
+
+          <div class="card">
+            <h3>Reports</h3>
+            <p>Monthly sales, routes, sampling, and client inventory.</p>
+          </div>
+
+          <div class="card">
+            <h3>Next Actions</h3>
+            <p>Plan today’s sales calls and scheduled samplings.</p>
+          </div>
+        </div>
+      </section>
 
     </div>
   </div>
 
-  <!-- SALES LEAD -->
-  <div class="card">
-    <h3>Sales Lead</h3>
-    <form>
-      <fieldset>
-        <label>Business Name <input type="text"></label>
-        <label>Contact Name <input type="text"></label>
-        <label>Phone / Email <input type="text"></label>
-        <label>Lead Source
-          <select>
-            <option>Walk-in</option>
-            <option>Sampling</option>
-            <option>Referral</option>
-            <option>Cold Call</option>
-          </select>
-        </label>
-        <label>Notes <textarea></textarea></label>
-        <button type="submit">Save Lead</button>
-      </fieldset>
-    </form>
-  </div>
-
-  <!-- DELIVERY -->
-  <div class="card">
-    <h3>Delivery</h3>
-    <form>
-      <fieldset>
-        <label>Invoice Number <input type="text"></label>
-        <label>Delivery Date <input type="date"></label>
-        <label>Delivered By <input type="text"></label>
-        <label>Notes <textarea></textarea></label>
-        <button type="submit">Log Delivery</button>
-      </fieldset>
-    </form>
-  </div>
-
-  <!-- FOLLOW UP -->
-  <div class="card">
-    <h3>Follow-Up</h3>
-    <form>
-      <fieldset>
-        <label>Customer <input type="text"></label>
-        <label>Follow-Up Date <input type="date"></label>
-        <label>Type
-          <select>
-            <option>Call</option>
-            <option>Email</option>
-            <option>Visit</option>
-          </select>
-        </label>
-        <label>Notes <textarea></textarea></label>
-        <button type="submit">Save Follow-Up</button>
-      </fieldset>
-    </form>
-  </div>
-
-  <!-- SAMPLING -->
-  <div class="card">
-    <h3>Sampling Schedule</h3>
-    <form>
-      <fieldset>
-        <label>Account / Store <input type="text"></label>
-        <label>Date <input type="date"></label>
-        <label>Start Time <input type="time"></label>
-        <label>End Time <input type="time"></label>
-        <label>Location <input type="text"></label>
-        <label>Notes <textarea></textarea></label>
-        <button type="submit">Schedule Sampling</button>
-      </fieldset>
-    </form>
-  </div>
-
-</section>
-
-</main>
-
-<footer>
-  © Suburban Brewing Company
-</footer>
-
+  <script>
+    const today = new Date().toLocaleDateString();
+    document.getElementById("today").textContent = today;
+  </script>
 </body>
 </html>
