@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>New Invoice | Suburban Brewing Company</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+  
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
 
   <style>
@@ -173,6 +173,7 @@
       <div id="customerDetails" style="display:none;">
         <h3>Customer Info:</h3>
         <p id="customerInfo"></p>
+        <p id="customerAddress"></p>
       </div>
     </div>
 
@@ -233,6 +234,12 @@
 
   <script>
     let customerType = 'Retail'; // Default is Retail
+
+    // Placeholder customer data
+    const customerDatabase = [
+      { name: 'John Doe', email: 'johndoe@example.com', address: '123 Main St, City, State, 12345' },
+      { name: 'Jane Smith', email: 'janesmith@example.com', address: '456 Oak St, Town, State, 67890' }
+    ];
 
     // Function to generate a unique invoice number
     function generateInvoiceNumber() {
@@ -325,6 +332,23 @@
       document.getElementById('salesTax').textContent = salesTax.toFixed(2);
       document.getElementById('finalTotal').textContent = finalTotal.toFixed(2);
     }
+
+    // Handle customer search and populate customer info
+    document.getElementById("searchButton").addEventListener("click", function() {
+      const searchTerm = document.getElementById("customerSearch").value.toLowerCase();
+      const customer = customerDatabase.find(cust => 
+        cust.name.toLowerCase().includes(searchTerm) || cust.email.toLowerCase().includes(searchTerm));
+
+      if (customer) {
+        document.getElementById("customerDetails").style.display = "block";
+        document.getElementById("customerInfo").innerText = `Name: ${customer.name}`;
+        document.getElementById("customerAddress").innerText = `Address: ${customer.address}`;
+        document.getElementById("searchButton").style.display = "none";
+        document.getElementById("customerSearch").style.display = "none";
+      } else {
+        alert("Customer not found.");
+      }
+    });
 
     // Placeholder functions for Google Sheets and Google Drive integration
     function saveInvoice() {
