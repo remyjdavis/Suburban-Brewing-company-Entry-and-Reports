@@ -1,142 +1,258 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Suburban Brewing Co – Entry & Reports</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<title>Suburban Brewing Co – Entry & Reports</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f4f6f8;
+    margin: 0;
+    padding: 0;
+    color: #222;
+  }
+
+  header {
+    background: #1f2933;
+    color: #fff;
+    padding: 20px 30px;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 26px;
+  }
+
+  header h2 {
+    margin: 5px 0 0;
+    font-size: 14px;
+    font-weight: normal;
+    color: #cbd5e1;
+  }
+
+  main {
+    padding: 30px;
+  }
+
+  section {
+    margin-bottom: 50px;
+  }
+
+  section > h2 {
+    font-size: 22px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 8px;
+  }
+
+  .card {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 25px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  }
+
+  .card h3 {
+    margin-top: 0;
+    font-size: 18px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+  }
+
+  fieldset {
+    border: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 12px;
+    font-size: 14px;
+  }
+
+  input, select, textarea {
+    width: 100%;
+    padding: 8px;
+    margin-top: 4px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 70px;
+  }
+
+  button {
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    padding: 10px 16px;
+    font-size: 14px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #1d4ed8;
+  }
+
+  footer {
+    background: #1f2933;
+    color: #cbd5e1;
+    padding: 15px 30px;
+    font-size: 12px;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  @media (max-width: 900px) {
+    .two-col {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
 </head>
 
 <body>
 
-<!-- ================= HEADER ================= -->
 <header>
   <h1>Suburban Brewing Company</h1>
   <h2>Entry & Reports Dashboard</h2>
 </header>
 
-<hr />
+<main>
 
-<!-- ================= LAYOUT ================= -->
-<div>
+<section id="sales">
+  <h2>Sales</h2>
 
-  <!-- ========== SIDEBAR NAVIGATION ========== -->
-  <nav>
-    <h3>Navigation</h3>
-    <ul>
-      <li><a href="#sales">Sales</a></li>
-      <li><a href="#inventory">Inventory</a></li>
-      <li><a href="#sampling">Sampling</a></li>
-      <li><a href="#reports">Reports</a></li>
-    </ul>
-  </nav>
+  <!-- INVOICES -->
+  <div class="card">
+    <h3>Invoices</h3>
+    <div class="two-col">
 
-  <hr />
+      <form>
+        <fieldset>
+          <label>
+            Invoice Number
+            <input type="text">
+          </label>
+          <button type="submit">Load Invoice</button>
+        </fieldset>
+      </form>
 
-  <!-- ========== MAIN CONTENT ========== -->
-  <main>
+      <form>
+        <fieldset>
+          <label>
+            Customer Name
+            <input type="text">
+          </label>
+          <label>
+            Invoice Date
+            <input type="date">
+          </label>
+          <label>
+            Sales Type
+            <select>
+              <option>Retail</option>
+              <option>Restaurant</option>
+              <option>Wholesale</option>
+            </select>
+          </label>
+          <button type="submit">Create Invoice</button>
+        </fieldset>
+      </form>
 
-    <!-- ================= SALES ================= -->
-    <section id="sales">
-      <h2>Sales</h2>
+    </div>
+  </div>
 
-      <article>
-        <h3>Invoice Actions</h3>
-        <ul>
-          <li>Create New Invoice</li>
-          <li>Search / Load Invoice</li>
-        </ul>
-      </article>
+  <!-- SALES LEAD -->
+  <div class="card">
+    <h3>Sales Lead</h3>
+    <form>
+      <fieldset>
+        <label>Business Name <input type="text"></label>
+        <label>Contact Name <input type="text"></label>
+        <label>Phone / Email <input type="text"></label>
+        <label>Lead Source
+          <select>
+            <option>Walk-in</option>
+            <option>Sampling</option>
+            <option>Referral</option>
+            <option>Cold Call</option>
+          </select>
+        </label>
+        <label>Notes <textarea></textarea></label>
+        <button type="submit">Save Lead</button>
+      </fieldset>
+    </form>
+  </div>
 
-      <article>
-        <h3>Sales Activity</h3>
-        <ul>
-          <li>Sales Lead Entry</li>
-          <li>Delivery Entry</li>
-          <li>Follow-Up Entry</li>
-          <li>Sampling Schedule Entry</li>
-        </ul>
-      </article>
-    </section>
+  <!-- DELIVERY -->
+  <div class="card">
+    <h3>Delivery</h3>
+    <form>
+      <fieldset>
+        <label>Invoice Number <input type="text"></label>
+        <label>Delivery Date <input type="date"></label>
+        <label>Delivered By <input type="text"></label>
+        <label>Notes <textarea></textarea></label>
+        <button type="submit">Log Delivery</button>
+      </fieldset>
+    </form>
+  </div>
 
-    <hr />
+  <!-- FOLLOW UP -->
+  <div class="card">
+    <h3>Follow-Up</h3>
+    <form>
+      <fieldset>
+        <label>Customer <input type="text"></label>
+        <label>Follow-Up Date <input type="date"></label>
+        <label>Type
+          <select>
+            <option>Call</option>
+            <option>Email</option>
+            <option>Visit</option>
+          </select>
+        </label>
+        <label>Notes <textarea></textarea></label>
+        <button type="submit">Save Follow-Up</button>
+      </fieldset>
+    </form>
+  </div>
 
-    <!-- ================= INVENTORY ================= -->
-    <section id="inventory">
-      <h2>Inventory</h2>
+  <!-- SAMPLING -->
+  <div class="card">
+    <h3>Sampling Schedule</h3>
+    <form>
+      <fieldset>
+        <label>Account / Store <input type="text"></label>
+        <label>Date <input type="date"></label>
+        <label>Start Time <input type="time"></label>
+        <label>End Time <input type="time"></label>
+        <label>Location <input type="text"></label>
+        <label>Notes <textarea></textarea></label>
+        <button type="submit">Schedule Sampling</button>
+      </fieldset>
+    </form>
+  </div>
 
-      <article>
-        <h3>Inventory Locations</h3>
-        <ul>
-          <li>Brewery Inventory</li>
-          <li>Store Inventory</li>
-        </ul>
-      </article>
+</section>
 
-      <article>
-        <h3>Inventory Actions</h3>
-        <ul>
-          <li>Update Brewery Inventory</li>
-          <li>Update Store Inventory</li>
-        </ul>
-      </article>
-    </section>
+</main>
 
-    <hr />
-
-    <!-- ================= SAMPLING ================= -->
-    <section id="sampling">
-      <h2>Sampling</h2>
-
-      <article>
-        <h3>Sampling Schedule</h3>
-        <ul>
-          <li>Upcoming Sampling Events</li>
-          <li>Past Sampling Results</li>
-        </ul>
-      </article>
-
-      <article>
-        <h3>Sampling Outcomes</h3>
-        <ul>
-          <li>Orders from Samples</li>
-          <li>Follow-Ups Required</li>
-        </ul>
-      </article>
-    </section>
-
-    <hr />
-
-    <!-- ================= REPORTS ================= -->
-    <section id="reports">
-      <h2>Reports</h2>
-
-      <article>
-        <h3>Sales Reports</h3>
-        <ul>
-          <li>Monthly Sales Report</li>
-          <li>Product Performance</li>
-          <li>Customer Sales Summary</li>
-        </ul>
-      </article>
-
-      <article>
-        <h3>Operational Reports</h3>
-        <ul>
-          <li>Daily / Weekly Sales Call Report</li>
-          <li>Sampling Effectiveness Report</li>
-          <li>Client Inventory Report</li>
-        </ul>
-      </article>
-    </section>
-
-  </main>
-</div>
-
-<hr />
-
-<!-- ================= FOOTER ================= -->
 <footer>
-  <p>© Suburban Brewing Company</p>
+  © Suburban Brewing Company
 </footer>
 
 </body>
