@@ -261,6 +261,7 @@
       const quantityContainer = selectElement.closest('td').nextElementSibling.querySelector('.quantity-inputs');
       quantityContainer.innerHTML = ''; // Clear existing quantity inputs
 
+      // Get all the selected options
       const selectedOptions = Array.from(selectElement.selectedOptions);
       selectedOptions.forEach(option => {
         const inputDiv = document.createElement('div');
@@ -269,8 +270,8 @@
         const input = document.createElement('input');
         input.type = 'number';
         input.min = 1;
-        input.value = 1;
-        input.addEventListener('input', updateTotal);
+        input.value = 1; // default value
+        input.addEventListener('input', updateTotal); // Bind event for total calculation
         inputDiv.appendChild(label);
         inputDiv.appendChild(input);
         quantityContainer.appendChild(inputDiv);
@@ -327,7 +328,7 @@
         const productType = Array.from(row.querySelectorAll('select option:checked'))
                                   .map(option => option.textContent);
         caseQuantity += productType.filter(type => type === "Case").length;
-      }
+      });
 
       let discount = 0;
       if (caseQuantity >= 10) {
