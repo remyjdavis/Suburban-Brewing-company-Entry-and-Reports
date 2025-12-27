@@ -257,11 +257,12 @@ function confirmProduct() {
   }
 
   const rows = [
-    { type: "Case", price: priceCase.value },
-    { type: "Bottle", price: priceBottle.value },
-    { type: "1/6 Keg", price: priceSixth.value },
-    { type: "1/2 Keg", price: priceHalf.value }
-  ];
+  { type: "Case",    price: document.getElementById("priceCase")?.value },
+  { type: "Bottle",  price: document.getElementById("priceBottle")?.value },
+  { type: "1/6 Keg", price: document.getElementById("priceSixth")?.value },
+  { type: "1/2 Keg", price: document.getElementById("priceHalf")?.value }
+];
+
 
   const productsToSave = rows
     .filter(r => r.price !== "")
