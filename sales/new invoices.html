@@ -338,6 +338,53 @@ function saveInvoiceLineItems(invoiceNumberValue) {
 }
 /* ============================================================ */
 </script>
+<script>
+/* ========================================================= */
+/* ========== ADDITION: GUARANTEED CUSTOMER SAVE ============ */
+/* ========================================================= */
+
+(function(){
+  let __customerSaved = false;
+
+  function saveCustomerToBackend(customer){
+    if(__customerSaved) return;
+    __customerSaved = true;
+
+    fetch(
+      API +
+      "?action=saveCustomer" +
+      "&name=" + encodeURIComponent(customer.name) +
+      "&address=" + encodeURIComponent(customer.address || "") +
+      "&type=" + encodeURIComponent(customer.type || "") +
+      "&payment=" + encodeURIComponent(customer.payment || "")
+    ).then(()=> {
+      console.log("Customer saved to Sheets:", customer.name);
+    });
+  }
+
+  /* Hook into EXISTING customer selection */
+  const __handleCustomerInput = handleCustomerInput;
+  handleCustomerInput = function(val){
+    __handleCustomerInput(val);
+
+    if(selectedCustomer && selectedCustomer.__isNew){
+      saveCustomerToBackend(selectedCustomer);
+    }
+  };
+
+  /* Hook into modal confirm if it exists */
+  if(typeof confirmCustomer === "function"){
+    const __confirmCustomer = confirmCustomer;
+    confirmCustomer = function(){
+      __confirmCustomer();
+
+      if(window.selectedCustomer){
+        saveCustomerToBackend(selectedCustomer);
+      }
+    };
+  }
+})();
+</script>
 
 </body>
 </html>
