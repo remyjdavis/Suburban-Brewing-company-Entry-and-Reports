@@ -5,44 +5,54 @@
 <title>New Invoice | Suburban Brewing Company</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- Libraries -->
+<!-- LIBRARIES -->
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 
 <style>
-body { font-family: Arial, sans-serif; margin: 0; }
+body { font-family: Arial, sans-serif; margin:0; background:#f5f6f8; }
 header {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 20px;
-  padding: 14px 20px;
-  border-bottom: 1px solid #ddd;
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:20px;
+  padding:14px 20px;
+  border-bottom:1px solid #ddd;
+  background:#fff;
 }
-.logo { height: 48px; }
-section { padding: 20px; }
-h2 { margin-top: 0; }
-table { width: 100%; border-collapse: collapse; }
-th, td { border: 1px solid #ddd; padding: 8px; }
-th { background: #1abc9c; color: #fff; }
-select, input { width: 100%; }
-.quantity-inputs div { margin-bottom: 4px; }
-.totals {
-  max-width: 420px;
-  margin-top: 20px;
+.logo { height:48px; }
+section { padding:20px; }
+h2 { margin-top:0; }
+
+.card {
+  background:#fff;
+  border-radius:8px;
+  padding:16px;
+  margin-bottom:20px;
+  box-shadow:0 2px 6px rgba(0,0,0,.08);
 }
-.totals div {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 4px;
+
+.card-header {
+  font-weight:bold;
+  margin-bottom:10px;
 }
+
+table { width:100%; border-collapse:collapse; background:#fff; }
+th, td { border:1px solid #ddd; padding:8px; }
+th { background:#1abc9c; color:#fff; }
+select, input { width:100%; padding:6px; }
+.quantity-inputs div { margin-bottom:4px; }
+.totals { max-width:420px; margin-top:20px; }
+.totals div { display:flex; justify-content:space-between; }
 .actions button {
-  margin-right: 10px;
-  padding: 8px 14px;
+  padding:10px 16px;
+  margin-right:10px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
 }
-.invoice-meta input {
-  width: 160px;
-}
+.footer-note { margin-top:20px; font-weight:bold; }
+.small-btn { padding:6px 12px; margin-top:6px; }
 </style>
 </head>
 
@@ -52,34 +62,42 @@ select, input { width: 100%; }
 <header>
   <img src="../sales/background.jpg" class="logo">
 
-  <div style="line-height:1.35">
+  <div>
     <strong>Suburban Brewing Company</strong><br>
-    Address: 3041 Horseshoe Pike Suite 120 &amp; 130<br>
+    3041 Horseshoe Pike Suite 120 &amp; 130<br>
     Honey Brook, PA 19344<br>
     Sales Rep: Remy Davis<br>
     Phone: 9086421019<br>
     Email: Remyjdavis90@gmail.com
   </div>
 
-  <div class="invoice-meta" style="text-align:right">
-    <div>
-      <strong>Invoice #:</strong><br>
-      <input id="invoiceNumber" oninput="updateBarcode()">
-    </div>
+  <div style="text-align:right">
+    <strong>Invoice #</strong><br>
+    <input id="invoiceNumber" oninput="updateBarcode()">
     <div>Date: <span id="invoiceDate"></span></div>
-    <svg id="barcode" style="margin-top:8px; width:160px; height:40px;"></svg>
+    <svg id="barcode" style="margin-top:8px;width:160px;height:40px"></svg>
   </div>
 </header>
 
-<!-- CUSTOMER -->
 <section>
-  <h2>Search for Customer</h2>
-  <input placeholder="Enter customer name or email">
-</section>
+
+<!-- CUSTOMER CARD -->
+<div class="card">
+  <div class="card-header">Customer Information</div>
+  <input id="customerName" placeholder="Customer Name">
+  <button class="small-btn" onclick="addCustomer()">Set Customer Type</button>
+  <div id="customerTypeDisplay" style="margin-top:8px"></div>
+</div>
+
+<!-- PRODUCT CARD -->
+<div class="card">
+  <div class="card-header">Product Management</div>
+  <button class="small-btn" onclick="addNewProduct()">➕ Add New Product</button>
+</div>
 
 <!-- ITEMS -->
-<section>
-  <h2>Invoice Items</h2>
+<div class="card">
+  <div class="card-header">Invoice Items</div>
 
   <table id="items">
     <thead>
@@ -93,14 +111,7 @@ select, input { width: 100%; }
     </thead>
     <tbody>
       <tr>
-        <td>
-          <select class="product">
-            <option>Beer A</option>
-            <option>Beer B</option>
-            <option>Beer C</option>
-          </select>
-        </td>
-
+        <td><select class="product"></select></td>
         <td>
           <select multiple class="type" onchange="updateQty(this)">
             <option>Case</option>
@@ -109,21 +120,14 @@ select, input { width: 100%; }
             <option>1/2 Keg</option>
           </select>
         </td>
-
-        <td class="qty-cell">
-          <div class="quantity-inputs"></div>
-        </td>
-
-        <td>
-          <input type="number" class="price" value="0" onchange="recalc()">
-        </td>
-
+        <td><div class="quantity-inputs"></div></td>
+        <td><input type="number" class="price" value="0" onchange="recalc()"></td>
         <td class="line-total">$0.00</td>
       </tr>
     </tbody>
   </table>
 
-  <button onclick="addRow()">Add Item</button>
+  <button class="small-btn" onclick="addRow()">Add Item</button>
 
   <!-- TOTALS -->
   <div class="totals">
@@ -133,160 +137,159 @@ select, input { width: 100%; }
     <div><span>Keg Deposit</span><span>$<span id="keg">0.00</span></span></div>
     <div><strong>Total</strong><strong>$<span id="grand">0.00</span></strong></div>
   </div>
-</section>
+
+  <div class="footer-note" id="paymentNote"></div>
+</div>
 
 <!-- ACTIONS -->
-<section class="actions">
+<div class="card actions">
   <button onclick="savePDF()">Save Invoice</button>
   <button onclick="printPDF()">Print Invoice</button>
   <button onclick="emailInvoice()">Send Invoice via Email</button>
+</div>
+
 </section>
 
 <script>
 const { jsPDF } = window.jspdf;
-const customerType = "Restaurant";
+
+/* PRODUCTS */
+let products = ["Beer A","Beer B","Beer C"];
+function populateProducts(){
+  document.querySelectorAll(".product").forEach(sel=>{
+    sel.innerHTML="";
+    products.forEach(p=>{
+      sel.insertAdjacentHTML("beforeend",`<option>${p}</option>`);
+    });
+  });
+}
+
+/* CUSTOMER LOGIC */
+let isFintech=false;
+let customerType="Restaurant";
+
+function addCustomer(){
+  isFintech = confirm("Is this a FINTECH customer?");
+  const isRestaurant = confirm("Is this customer a RESTAURANT?");
+  customerType = isRestaurant ? "Restaurant":"Wholesaler";
+
+  customerTypeDisplay.innerHTML =
+    `Payment: ${isFintech?"Fintech":"Check"}<br>
+     Type: ${customerType}`;
+
+  paymentNote.textContent =
+    isFintech
+      ? "Paid through Fintech"
+      : "Make checks payable to Suburban Brewing Company";
+
+  recalc();
+}
 
 /* INIT */
-const defaultInvoice = "INV-" + Math.floor(Math.random()*900000);
-const invoiceInput = document.getElementById("invoiceNumber");
-invoiceInput.value = defaultInvoice;
-
-document.getElementById("invoiceDate").textContent =
-  new Date().toLocaleDateString();
-
+invoiceDate.textContent = new Date().toLocaleDateString();
+invoiceNumber.value = "INV-" + Math.floor(Math.random()*900000);
+populateProducts();
 updateBarcode();
 
 /* BARCODE */
 function updateBarcode(){
-  const val = invoiceInput.value || "";
-  if (val.trim() === "") return;
-  JsBarcode("#barcode", val, { displayValue:false });
+  JsBarcode("#barcode", invoiceNumber.value,{displayValue:false});
 }
 
-/* QUANTITIES */
+/* PRODUCT CREATE */
+function addNewProduct(){
+  const name = prompt("Enter new product name:");
+  if(!name || products.includes(name)) return;
+  products.push(name);
+  populateProducts();
+}
+
+/* ROWS */
+function addRow(){
+  const tbody=document.querySelector("#items tbody");
+  const clone=tbody.rows[0].cloneNode(true);
+  clone.querySelector(".quantity-inputs").innerHTML="";
+  clone.querySelector(".price").value=0;
+  clone.querySelector(".line-total").textContent="$0.00";
+  tbody.appendChild(clone);
+  populateProducts();
+}
+
+/* QUANTITY */
 function updateQty(sel){
-  const box = sel.closest("tr").querySelector(".quantity-inputs");
+  const box=sel.closest("tr").querySelector(".quantity-inputs");
   box.innerHTML="";
   [...sel.selectedOptions].forEach(o=>{
-    box.insertAdjacentHTML(
-      "beforeend",
+    box.insertAdjacentHTML("beforeend",
       `<div>${o.textContent}: <input type="number" value="1" onchange="recalc()"></div>`
     );
   });
   recalc();
 }
 
-/* ADD ROW */
-function addRow(){
-  const tbody = document.querySelector("#items tbody");
-  tbody.insertAdjacentHTML("beforeend", tbody.rows[0].outerHTML);
-}
-
-/* CALCULATIONS (LOCKED RULES) */
+/* CALC */
 function recalc(){
-  let subtotalVal = 0;
-  let kegDeposit = 0;
-
+  let subtotal=0,keg=0;
   document.querySelectorAll("#items tbody tr").forEach(r=>{
-    const price = +r.querySelector(".price").value || 0;
-    let rowTotal = 0;
-
-    const types = [...r.querySelectorAll(".type option:checked")];
-    const qtys = r.querySelectorAll(".quantity-inputs input");
+    let row=0;
+    const price=+r.querySelector(".price").value||0;
+    const qtys=r.querySelectorAll(".quantity-inputs input");
+    const types=r.querySelectorAll(".type option:checked");
 
     types.forEach((t,i)=>{
-      const q = +qtys[i]?.value || 0;
-      rowTotal += q * price;
-      if (t.textContent.includes("Keg")) kegDeposit += 30;
+      const q=+qtys[i]?.value||0;
+      row+=q*price;
+      if(t.textContent.includes("Keg")) keg+=30;
     });
 
-    r.querySelector(".line-total").textContent =
-      "$" + rowTotal.toFixed(2);
-
-    subtotalVal += rowTotal;
+    r.querySelector(".line-total").textContent="$"+row.toFixed(2);
+    subtotal+=row;
   });
 
-  const taxVal = customerType === "Restaurant"
-    ? subtotalVal * 0.06
-    : 0;
-
-  document.getElementById("subtotal").textContent = subtotalVal.toFixed(2);
-  document.getElementById("tax").textContent = taxVal.toFixed(2);
-  document.getElementById("keg").textContent = kegDeposit.toFixed(2);
-  document.getElementById("grand").textContent =
-    (subtotalVal + taxVal + kegDeposit).toFixed(2);
+  const tax=customerType==="Restaurant"?subtotal*0.06:0;
+  subtotalElem.textContent=subtotal.toFixed(2);
+  taxElem.textContent=tax.toFixed(2);
+  kegElem.textContent=keg.toFixed(2);
+  grandElem.textContent=(subtotal+tax+keg).toFixed(2);
 }
 
 /* PDF */
 function buildPDF(){
-  const doc = new jsPDF();
-  const invoice = invoiceInput.value;
+  const doc=new jsPDF();
+  doc.text("Suburban Brewing Company",15,15);
+  doc.text("Invoice #: "+invoiceNumber.value,150,15);
+  doc.text("Date: "+invoiceDate.textContent,150,22);
 
-  doc.addImage(
-    document.querySelector(".logo"),
-    "JPEG", 15, 10, 30, 30
-  );
+  const bc=document.createElement("canvas");
+  JsBarcode(bc,invoiceNumber.value,{displayValue:false});
+  doc.addImage(bc,"PNG",150,28,40,14);
 
-  doc.text("Suburban Brewing Company", 50, 15);
-  doc.text(`Invoice #: ${invoice}`, 150, 15);
-  doc.text(`Date: ${document.getElementById("invoiceDate").textContent}`, 150, 22);
-
-  const bc = document.createElement("canvas");
-  JsBarcode(bc, invoice, { displayValue:false });
-  doc.addImage(bc, "PNG", 150, 32, 45, 14);
-
-  const rows = [];
+  const rows=[];
   document.querySelectorAll("#items tbody tr").forEach(r=>{
-    const name = r.querySelector(".product").value;
-    const price = r.querySelector(".price").value;
-    const qtys = r.querySelectorAll(".quantity-inputs input");
-    const types = r.querySelectorAll(".type option:checked");
-
+    const name=r.querySelector(".product").value;
+    const price=r.querySelector(".price").value;
+    const qtys=r.querySelectorAll(".quantity-inputs input");
+    const types=r.querySelectorAll(".type option:checked");
     types.forEach((t,i)=>{
-      rows.push([
-        name,
-        t.textContent,
-        qtys[i]?.value || 0,
-        "$" + price,
-        r.querySelector(".line-total").textContent
-      ]);
+      rows.push([name,t.textContent,qtys[i]?.value||0,"$"+price,r.querySelector(".line-total").textContent]);
     });
   });
 
-  doc.autoTable({
-    startY: 55,
-    head: [["Product","Type","Qty","Price","Total"]],
-    body: rows
-  });
+  doc.autoTable({startY:50,head:[["Product","Type","Qty","Price","Total"]],body:rows});
 
-  let y = doc.lastAutoTable.finalY + 10;
-  doc.text(`Subtotal: $${subtotal.textContent}`, 150, y);
-  doc.text(`Tax: $${tax.textContent}`, 150, y + 6);
-  doc.text(`Keg Deposit: $${keg.textContent}`, 150, y + 12);
-  doc.text(`Total: $${grand.textContent}`, 150, y + 18);
-
-  doc.text(
-    "Make checks payable to Suburban Brewing Company.",
-    15, y + 35
-  );
+  let y=doc.lastAutoTable.finalY+10;
+  doc.text("Subtotal: $"+subtotal.textContent,150,y);
+  doc.text("Tax: $"+tax.textContent,150,y+6);
+  doc.text("Keg Deposit: $"+keg.textContent,150,y+12);
+  doc.text("Total: $"+grand.textContent,150,y+18);
+  doc.text(paymentNote.textContent,15,y+32);
 
   return doc;
 }
 
-function savePDF(){ buildPDF().save(invoiceInput.value + ".pdf"); }
-function printPDF(){
-  const p = buildPDF();
-  p.autoPrint();
-  window.open(p.output("bloburl"));
-}
-
-function emailInvoice(){
-  const subject = `Invoice ${invoiceInput.value}`;
-  const body =
-    `Invoice Total: $${grand.textContent}%0D%0AThank you for your business.`;
-  window.location.href =
-    `mailto:?subject=${subject}&body=${body}`;
-}
+function savePDF(){buildPDF().save(invoiceNumber.value+".pdf");}
+function printPDF(){const d=buildPDF();d.autoPrint();window.open(d.output("bloburl"));}
+function emailInvoice(){window.location.href=`mailto:?subject=Invoice ${invoiceNumber.value}&body=Total $${grand.textContent}`;}
 </script>
 
 </body>
