@@ -257,33 +257,46 @@ function closeCustomer(){
 function closeProduct() {
   document.getElementById("productModal").style.display = "none";
 }
-function handleTypeToggle(checkbox, container) {
-  const type = checkbox.dataset.type;
-  const row = checkbox.closest("tr");
-  const priceInput = row.children[3].querySelector("input");
-  const productName = row.children[0].querySelector("input").value;
+function handleTypeToggle(cb, container) {
+  const row = cb.closest("tr");
+  const product = row.children[0].querySelector("input").value;
 
-  if (checkbox.checked) {
+  if (cb.checked) {
+    const line = document.createElement("div");
+    line.style.display = "flex";
+    line.style.gap = "6px";
+    line.style.marginBottom = "4px";
+
     const qty = document.createElement("input");
     qty.type = "number";
     qty.min = 1;
     qty.value = 1;
-    qty.dataset.type = type;
+    qty.style.width = "60px";
     qty.oninput = calc;
-    container.appendChild(qty);
 
-    // 🔥 AUTO PRICE
-    if (productData[productName]?.[type]) {
-      priceInput.value = productData[productName][type];
+    const price = document.createElement("input");
+    price.type = "number";
+    price.readOnly = true;
+    price.style.width = "80px";
+    price.style.background = "#f2f2f2";
+
+    if (productData[product]?.[cb.dataset.type]) {
+      price.value = productData[product][cb.dataset.type];
     }
 
+    line.dataset.type = cb.dataset.type;
+    line.append(qty, price);
+    container.appendChild(line);
+
   } else {
-    [...container.querySelectorAll(`input[data-type="${type}"]`)]
+    container
+      .querySelectorAll(`div[data-type="${cb.dataset.type}"]`)
       .forEach(el => el.remove());
   }
 
   calc();
 }
+
 
 
 
@@ -309,11 +322,20 @@ p.onchange = () => {
 
   const typesDiv = document.createElement("div");
 typesDiv.innerHTML = `
-  <label><input type="checkbox" data-type="Case"> Case</label><br>
-  <label><input type="checkbox" data-type="Bottle"> Bottle</label><br>
-  <label><input type="checkbox" data-type="1/6 Keg"> 1/6 Keg</label><br>
-  <label><input type="checkbox" data-type="1/2 Keg"> 1/2 Keg</label>
+  <label style="margin-right:8px">
+    <input type="checkbox" data-type="Case"> Case
+  </label>
+  <label style="margin-right:8px">
+    <input type="checkbox" data-type="Bottle"> Bottle
+  </label>
+  <label style="margin-right:8px">
+    <input type="checkbox" data-type="1/6 Keg"> 1/6
+  </label>
+  <label>
+    <input type="checkbox" data-type="1/2 Keg"> 1/2
+  </label>
 `;
+
   const qtyContainer = document.createElement("div");
 
 typesDiv.querySelectorAll("input[type=checkbox]").forEach(cb => {
@@ -323,8 +345,12 @@ typesDiv.querySelectorAll("input[type=checkbox]").forEach(cb => {
   const q=document.createElement("input");
   q.type="number"; q.value=1; q.oninput=calc;
 
-  const price=document.createElement("input");
-  price.type="number"; price.value=0; price.oninput=calc;
+  const price = document.createElement("input");
+price.type = "number";
+price.value = 0;
+price.readOnly = true;
+price.style.background = "#f2f2f2";
+
 
   const total=document.createElement("span"); total.innerText="$0.00";
 
