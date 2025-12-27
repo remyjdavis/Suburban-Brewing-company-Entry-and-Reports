@@ -3,320 +3,188 @@
 <head>
 <meta charset="UTF-8">
 <title>New Invoice | Suburban Brewing Company</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-<!-- LIBRARIES -->
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<!-- jsPDF + AutoTable -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
 <style>
-body { font-family: Arial, sans-serif; margin:0; background:#f4f6f8; }
-header {
-  display:grid;
-  grid-template-columns:auto 1fr auto;
-  gap:20px;
-  padding:16px;
-  background:#fff;
-  border-bottom:1px solid #ccc;
-}
-.logo { height:50px; }
-section { padding:20px; }
-.card {
-  background:#fff;
-  border-radius:8px;
-  padding:16px;
-  margin-bottom:20px;
-  box-shadow:0 2px 6px rgba(0,0,0,.1);
-}
-.hidden { display:none; }
-table { width:100%; border-collapse:collapse; }
-th, td { border:1px solid #ccc; padding:8px; }
-th { background:#1abc9c; color:#fff; }
-input, select { width:100%; padding:6px; }
-.quantity-inputs div { margin-bottom:4px; }
-.totals { max-width:420px; margin-top:20px; }
-.totals div { display:flex; justify-content:space-between; margin-bottom:6px; }
-.actions button { padding:10px 16px; margin-right:10px; cursor:pointer; }
-.footer-note { margin-top:16px; font-weight:bold; }
-.small-btn { margin-top:6px; padding:6px 12px; }
+body { font-family: Arial, sans-serif; background:#f4f4f4; margin:0; padding:20px }
+.container { background:#fff; padding:20px; max-width:1100px; margin:auto }
+header { display:flex; justify-content:space-between; align-items:flex-start }
+header img { width:80px; margin-right:15px }
+.company { display:flex }
+h1 { margin:0 }
+table { width:100%; border-collapse:collapse; margin-top:15px }
+th,td { border:1px solid #ccc; padding:8px; text-align:left }
+th { background:#18b89a; color:#fff }
+input,select { width:100%; padding:6px }
+button { padding:8px 14px; margin-top:10px }
+.totals { max-width:300px; margin-left:auto; margin-top:20px }
+.totals div { display:flex; justify-content:space-between; margin:6px 0 }
+.hidden { display:none }
 </style>
 </head>
 
 <body>
+<div class="container">
 
 <header>
-  <img src="../sales/background.jpg" class="logo">
-  <div>
-    <strong>Suburban Brewing Company</strong><br>
-    3041 Horseshoe Pike Suite 120 &amp; 130<br>
-    Honey Brook, PA 19344<br>
-    Sales Rep: Remy Davis | 908-642-1019<br>
-    Remyjdavis90@gmail.com
+  <div class="company">
+    <img src="background.jpg">
+    <div>
+      <strong>Suburban Brewing Company</strong><br>
+      3041 Horseshoe Pike Suite 120 & 130<br>
+      Honey Brook, PA 19344<br>
+      Sales Rep: Remy Davis | Phone: 9086421019<br>
+      Email: Remyjdavis90@gmail.com
+    </div>
   </div>
-  <div style="text-align:right">
-    <label>Invoice #</label>
-    <input id="invoiceNumber" oninput="updateBarcode()">
-    <div id="invoiceDate"></div>
-    <svg id="barcode" style="margin-top:6px"></svg>
+
+  <div>
+    Invoice #: <input id="invoiceNumber" value="INV-1001"><br>
+    Date: <span id="invoiceDate"></span><br>
+    <svg id="barcode"></svg>
   </div>
 </header>
 
-<section>
+<hr>
 
-<!-- CUSTOMER SEARCH -->
-<div class="card">
-  <strong>Customer</strong>
-  <input id="customerSearch" placeholder="Start typing customer name" onblur="checkCustomer()">
-  <div id="customerSummary"></div>
-</div>
+<h3>Customer</h3>
+<input id="customerName" placeholder="Customer Name">
+<input id="customerAddress" placeholder="Customer Address">
 
-<!-- NEW CUSTOMER CARD -->
-<div class="card hidden" id="customerCard">
-  <strong>New Customer</strong>
-  <input id="newCustomerName" placeholder="Customer Name">
-  <input id="newCustomerAddress" placeholder="Street Address">
-  <input id="newCustomerCity" placeholder="City, State ZIP">
-  <button class="small-btn" onclick="saveCustomer()">Save Customer</button>
-</div>
+<h3>Invoice Items</h3>
 
-<!-- NEW PRODUCT CARD -->
-<div class="card hidden" id="productCard">
-  <strong>New Product</strong>
-  <input id="newProductName" placeholder="Product Name">
-  <button class="small-btn" onclick="saveProduct()">Save Product</button>
-</div>
-
-<!-- INVOICE ITEMS -->
-<div class="card">
-<table id="items">
+<table id="itemsTable">
 <thead>
 <tr>
-<th>Product Name</th>
-<th>Product Type</th>
-<th>Quantity</th>
-<th>Unit Price</th>
-<th>Total</th>
+  <th>Product Name</th>
+  <th>Product Type</th>
+  <th>Quantity</th>
+  <th>Unit Price</th>
+  <th>Total</th>
 </tr>
 </thead>
-<tbody>
-<tr>
-<td>
-<input list="productList" onblur="checkProduct(this)">
-</td>
-<td>
-<select multiple onchange="updateQty(this)">
-<option>Case</option>
-<option>Bottle</option>
-<option>1/6 Keg</option>
-<option>1/2 Keg</option>
-</select>
-</td>
-<td><div class="quantity-inputs"></div></td>
-<td><input type="number" value="0" onchange="recalc()"></td>
-<td class="line-total">$0.00</td>
-</tr>
-</tbody>
+<tbody></tbody>
 </table>
 
-<button class="small-btn" onclick="addRow()">Add Item</button>
-
-<datalist id="productList"></datalist>
+<button onclick="addRow()">Add Item</button>
 
 <div class="totals">
-<div><span>Subtotal</span><span>$<span id="subtotal">0.00</span></span></div>
-<div><span>Sales Tax</span><span>$<span id="tax">0.00</span></span></div>
-<div><span>Discount</span><span>$0.00</span></div>
-<div><span>Keg Deposit</span><span>$<span id="keg">0.00</span></span></div>
-<div><strong>Total</strong><strong>$<span id="grand">0.00</span></strong></div>
+  <div><span>Subtotal</span><span id="sub">$0.00</span></div>
+  <div><span>Discount</span><span id="disc">$0.00</span></div>
+  <div><span>Sales Tax (6%)</span><span id="tax">$0.00</span></div>
+  <div><span>Keg Deposit</span><span id="keg">$0.00</span></div>
+  <hr>
+  <div><strong>Total</strong><strong id="total">$0.00</strong></div>
 </div>
 
-<div class="footer-note" id="paymentNote"></div>
-</div>
+<button onclick="generatePDF()">Print Invoice</button>
 
-<div class="card actions">
-<button onclick="savePDF()">Save</button>
-<button onclick="printPDF()">Print</button>
-<button onclick="emailInvoice()">Email</button>
-</div>
+<p id="paymentNote">Make checks payable to Suburban Brewing Company.</p>
 
-</section>
+</div>
 
 <script>
-const { jsPDF } = window.jspdf;
+const products = ["Beer A","Beer B","Beer C"];
+const types = ["Case","Bottle","1/6 Keg","1/2 Keg"];
 
-/* ================= MEMORY ================= */
-let customers = [
-  { name: "Acme Bar", address: "123 Main St, Honey Brook PA" }
-];
-let products = ["Beer A", "Beer B", "Beer C"];
-let activeCustomer = null;
-let isFintech = false;
-let customerType = "Restaurant";
+document.getElementById("invoiceDate").innerText =
+  new Date().toLocaleDateString();
 
-/* ================= INIT ================= */
-invoiceDate.textContent = new Date().toLocaleDateString();
-invoiceNumber.value = "INV-" + Math.floor(Math.random() * 900000);
-populateProducts();
-updateBarcode();
+JsBarcode("#barcode", document.getElementById("invoiceNumber").value, {
+  width:1.5, height:40, displayValue:false
+});
 
-function normalize(v){ return v.trim().toLowerCase(); }
-
-/* ================= CUSTOMER ================= */
-function checkCustomer(){
-  const val = customerSearch.value.trim();
-  if(!val) return;
-
-  const found = customers.find(c => normalize(c.name) === normalize(val));
-  if(found){
-    activeCustomer = found;
-    customerSummary.innerHTML = `<strong>${found.name}</strong><br>${found.address}`;
-  } else {
-    if(confirm("Customer not found. Create new?")){
-      customerCard.classList.remove("hidden");
-      newCustomerName.value = val;
-    }
-  }
-}
-
-function saveCustomer(){
-  activeCustomer = {
-    name: newCustomerName.value.trim(),
-    address: `${newCustomerAddress.value.trim()}, ${newCustomerCity.value.trim()}`
-  };
-  customers.push(activeCustomer);
-
-  isFintech = confirm("Is this a FINTECH customer?");
-  customerType = confirm("Is this a RESTAURANT?") ? "Restaurant" : "Wholesaler";
-
-  customerSummary.innerHTML = `
-    <strong>${activeCustomer.name}</strong><br>
-    ${activeCustomer.address}<br>${customerType}
-  `;
-
-  paymentNote.textContent = isFintech
-    ? "Paid through Fintech"
-    : "Make checks payable to Suburban Brewing Company";
-
-  customerCard.classList.add("hidden");
-  recalc();
-}
-
-/* ================= PRODUCTS ================= */
-function populateProducts(){
-  productList.innerHTML = "";
-  products.forEach(p =>
-    productList.insertAdjacentHTML("beforeend", `<option value="${p}">`)
-  );
-}
-
-function checkProduct(input){
-  const val = input.value.trim();
-  if(!val) return;
-  if(!products.some(p => normalize(p) === normalize(val))){
-    if(confirm("Product not found. Create new?")){
-      productCard.classList.remove("hidden");
-      newProductName.value = val;
-    }
-  }
-}
-
-function saveProduct(){
-  products.push(newProductName.value.trim());
-  populateProducts();
-  productCard.classList.add("hidden");
-}
-
-/* ================= ROWS ================= */
 function addRow(){
-  const r = items.tBodies[0].rows[0].cloneNode(true);
-  r.querySelector(".quantity-inputs").innerHTML = "";
-  r.querySelector(".line-total").textContent = "$0.00";
-  items.tBodies[0].appendChild(r);
+  const tr = document.createElement("tr");
+
+  const p = document.createElement("select");
+  products.forEach(v=>p.add(new Option(v,v)));
+
+  const t = document.createElement("select");
+  t.multiple = true;
+  types.forEach(v=>t.add(new Option(v,v)));
+  t.onchange = ()=>buildQty(q,t);
+
+  const q = document.createElement("div");
+
+  const price = document.createElement("input");
+  price.type="number"; price.value=0; price.oninput=calc;
+
+  const total = document.createElement("span");
+  total.innerText="$0.00";
+
+  tr.append(td(p), td(t), td(q), td(price), td(total));
+  document.querySelector("#itemsTable tbody").append(tr);
 }
 
-/* ================= QUANTITY ================= */
-function updateQty(sel){
-  const box = sel.closest("tr").querySelector(".quantity-inputs");
-  box.innerHTML = "";
-  [...sel.selectedOptions].forEach(o=>{
-    box.insertAdjacentHTML("beforeend",
-      `${o.textContent}: <input type="number" value="1" onchange="recalc()">`
-    );
+function buildQty(container,select){
+  container.innerHTML="";
+  [...select.selectedOptions].forEach(o=>{
+    const i=document.createElement("input");
+    i.type="number"; i.value=1; i.dataset.type=o.value;
+    i.oninput=calc;
+    container.append(o.value+" ",i,document.createElement("br"));
   });
-  recalc();
 }
 
-/* ================= CALC ================= */
-function recalc(){
-  let sub = 0, keg = 0;
+function td(el){const d=document.createElement("td"); d.append(el); return d}
 
-  document.querySelectorAll("#items tbody tr").forEach(r=>{
-    let row = 0;
-    const price = +r.cells[3].querySelector("input").value || 0;
-    const types = r.cells[1].querySelectorAll("option:checked");
-    const qtys = r.cells[2].querySelectorAll("input");
-
-    types.forEach((t,i)=>{
-      row += price * (+qtys[i].value || 0);
-      if(t.textContent.includes("Keg")) keg += 30;
-    });
-
-    r.querySelector(".line-total").textContent = "$" + row.toFixed(2);
-    sub += row;
+function calc(){
+  let subtotal=0;
+  document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
+    const price=r.children[3].firstChild.value;
+    let qty=0;
+    r.children[2].querySelectorAll("input").forEach(i=>qty+=+i.value);
+    const line=price*qty;
+    r.children[4].innerText="$"+line.toFixed(2);
+    subtotal+=line;
   });
-
-  const tax = customerType === "Restaurant" ? sub * 0.06 : 0;
-  subtotal.textContent = sub.toFixed(2);
-  tax.textContent = tax.toFixed(2);
-  keg.textContent = keg.toFixed(2);
-  grand.textContent = (sub + tax + keg).toFixed(2);
+  const tax=subtotal*0.06;
+  document.getElementById("sub").innerText="$"+subtotal.toFixed(2);
+  document.getElementById("tax").innerText="$"+tax.toFixed(2);
+  document.getElementById("total").innerText="$"+(subtotal+tax).toFixed(2);
 }
 
-/* ================= BARCODE ================= */
-function updateBarcode(){
-  JsBarcode("#barcode", invoiceNumber.value, { displayValue:false });
-}
-
-/* ================= PDF ================= */
-function buildPDF(){
+function generatePDF(){
+  const { jsPDF } = window.jspdf;
   const d = new jsPDF();
-  d.text("Suburban Brewing Company", 14, 14);
-  d.text(`Invoice ${invoiceNumber.value}`, 150, 14);
-  d.text(`Date: ${invoiceDate.textContent}`, 150, 20);
 
-  if(activeCustomer){
-    d.text(`Bill To: ${activeCustomer.name}`, 14, 26);
-    d.text(activeCustomer.address, 14, 32);
-  }
+  d.addImage("background.jpg","PNG",14,10,20,20);
+  d.text("Suburban Brewing Company",40,16);
+  d.text("3041 Horseshoe Pike Suite 120 & 130",40,22);
+  d.text("Honey Brook, PA 19344",40,28);
 
-  const c = document.createElement("canvas");
-  JsBarcode(c, invoiceNumber.value, { displayValue:false });
-  d.addImage(c, "PNG", 150, 26, 40, 12);
+  d.text(`Invoice #: ${invoiceNumber.value}`,140,16);
+  d.text(`Date: ${invoiceDate.innerText}`,140,22);
 
-  const rows = [];
-  document.querySelectorAll("#items tbody tr").forEach(r=>{
-    const name = r.cells[0].querySelector("input").value;
-    const price = r.cells[3].querySelector("input").value;
-    const types = r.cells[1].querySelectorAll("option:checked");
-    const qtys = r.cells[2].querySelectorAll("input");
+  d.text("Bill To:",14,40);
+  d.text(customerName.value,14,46);
+  d.text(customerAddress.value,14,52);
 
-    types.forEach((t,i)=>{
-      rows.push([name, t.textContent, qtys[i].value, "$"+price, r.querySelector(".line-total").textContent]);
-    });
+  const rows=[];
+  document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
+    const name=r.children[0].firstChild.value;
+    const types=[...r.children[1].firstChild.selectedOptions].map(o=>o.value).join(", ");
+    const qty=[...r.children[2].querySelectorAll("input")].map(i=>`${i.dataset.type}:${i.value}`).join(" ");
+    rows.push([name,types,qty,r.children[3].firstChild.value,r.children[4].innerText]);
   });
 
-  d.autoTable({ startY: 42, head:[["Product","Type","Qty","Price","Total"]], body: rows });
-  d.text(paymentNote.textContent, 14, d.lastAutoTable.finalY + 10);
-  return d;
-}
+  d.autoTable({
+    startY:60,
+    head:[["Product","Type","Qty","Price","Total"]],
+    body:rows
+  });
 
-function savePDF(){ buildPDF().save(invoiceNumber.value + ".pdf"); }
-function printPDF(){ const d=buildPDF(); d.autoPrint(); window.open(d.output("bloburl")); }
-function emailInvoice(){
-  location.href=`mailto:?subject=Invoice ${invoiceNumber.value}&body=Total $${grand.textContent}`;
+  d.text(`Total: ${total.innerText}`,140,d.lastAutoTable.finalY+10);
+  d.text(paymentNote.innerText,14,d.lastAutoTable.finalY+20);
+
+  d.save("invoice.pdf");
 }
 </script>
-
 </body>
 </html>
