@@ -10,7 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
 <style>
-body{font-family:Arial;background:#f4f4f4;margin:0;padding:20px}
+body{font-family:Arial;background:#f4f4f4;padding:20px}
 .container{background:#fff;padding:20px;max-width:1100px;margin:auto}
 header{display:flex;justify-content:space-between}
 .company{display:flex}
@@ -18,15 +18,13 @@ header img{width:80px;margin-right:15px}
 table{width:100%;border-collapse:collapse;margin-top:15px}
 th,td{border:1px solid #ccc;padding:8px}
 th{background:#18b89a;color:#fff}
-input,select{width:100%;padding:6px}
+input,select,textarea{width:100%;padding:6px}
 button{padding:8px 14px;margin-top:10px}
 .totals{max-width:320px;margin-left:auto;margin-top:20px}
 .totals div{display:flex;justify-content:space-between;margin:6px 0}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center}
 .modal-card{background:#fff;padding:20px;width:420px;border-radius:6px}
 .price-row{display:flex;gap:8px;margin-bottom:6px}
-.price-row span{flex:1}
-.price-row input{flex:1}
 </style>
 </head>
 
@@ -64,7 +62,7 @@ button{padding:8px 14px;margin-top:10px}
 <th>Product</th>
 <th>Type</th>
 <th>Qty</th>
-<th>Price</th>
+<th>Unit Price</th>
 <th>Total</th>
 </tr>
 </thead>
@@ -82,7 +80,7 @@ button{padding:8px 14px;margin-top:10px}
 <div><strong>Total</strong><strong id="total">$0.00</strong></div>
 </div>
 
-<button onclick="generatePDF()">Print Invoice</button>
+<button id="printBtn" onclick="finalizeInvoice()">Print Invoice</button>
 <p id="paymentNote">Make checks payable to Suburban Brewing Company.</p>
 
 </div>
@@ -116,18 +114,20 @@ button{padding:8px 14px;margin-top:10px}
 </div>
 
 <script>
-const KEG_DEPOSIT = 30;
-const TYPES = ["Case","Bottle","1/6 Keg","1/2 Keg"];
+const KEG_DEPOSIT=30;
+const TYPES=["Case","Bottle","1/6 Keg","1/2 Keg"];
 
-let customers = JSON.parse(localStorage.getItem("customers")||"[]");
-let products = JSON.parse(localStorage.getItem("products")||"{}");
-let invoiceNum = +localStorage.getItem("invoiceNum")||1001;
+let customers=JSON.parse(localStorage.getItem("customers")||"[]");
+let products=JSON.parse(localStorage.getItem("products")||"{}");
+let invoiceNum=+localStorage.getItem("invoiceNum")||1001;
 
 let activeCustomer=null;
+let invoiceStatus="draft";
 let pendingProduct=null;
+let invoiceItems=[];
 
-invoiceNumber.innerText = invoiceNum;
-invoiceDate.innerText = new Date().toLocaleDateString();
+invoiceNumber.innerText=invoiceNum;
+invoiceDate.innerText=new Date().toLocaleDateString();
 JsBarcode("#barcode",invoiceNum,{displayValue:false});
 
 function saveState(){
@@ -143,28 +143,21 @@ function checkNewCustomer(){
   if(c){
     activeCustomer=c;
     customerAddress.value=c.address;
-    paymentNote.innerText=c.payment==="fintech"
-      ?"Paid through Fintech"
-      :"Make checks payable to Suburban Brewing Company";
+    paymentNote.innerText=c.payment==="fintech"?"Paid through Fintech":"Make checks payable to Suburban Brewing Company";
     calc();
-    return;
-  }
-  customerModal.style.display="flex";
+  } else customerModal.style.display="flex";
 }
 
 function saveCustomer(){
-  const c={
+  activeCustomer={
     name:customerName.value,
     address:modalAddress.value,
     payment:modalPayment.value,
     type:modalType.value
   };
-  customers.push(c);
-  activeCustomer=c;
-  customerAddress.value=c.address;
-  paymentNote.innerText=c.payment==="fintech"
-    ?"Paid through Fintech"
-    :"Make checks payable to Suburban Brewing Company";
+  customers.push(activeCustomer);
+  customerAddress.value=activeCustomer.address;
+  paymentNote.innerText=activeCustomer.payment==="fintech"?"Paid through Fintech":"Make checks payable to Suburban Brewing Company";
   saveState();
   customerModal.style.display="none";
 }
@@ -191,15 +184,14 @@ function addRow(){
 }
 
 function detectProduct(name){
-  if(!name || products[name]) return;
+  if(!name||products[name]) return;
   pendingProduct=name;
   priceInputs.innerHTML="";
   TYPES.forEach(t=>{
     priceInputs.innerHTML+=`
       <div class="price-row">
-        <span>${t}</span>
-        <input data-type="${t}" placeholder="Restaurant">
-        <input data-type="${t}" placeholder="Wholesaler">
+        <input data-type="${t}" placeholder="${t} Restaurant">
+        <input data-type="${t}" placeholder="${t} Wholesaler">
       </div>`;
   });
   productModal.style.display="flex";
@@ -209,7 +201,7 @@ function saveProduct(){
   const prices={restaurant:{},wholesaler:{}};
   priceInputs.querySelectorAll("input").forEach(i=>{
     const type=i.dataset.type;
-    if(i.placeholder==="Restaurant") prices.restaurant[type]=+i.value||0;
+    if(i.placeholder.includes("Restaurant")) prices.restaurant[type]=+i.value||0;
     else prices.wholesaler[type]=+i.value||0;
   });
   products[pendingProduct]={prices};
@@ -226,8 +218,7 @@ function buildQty(c,s,p,tr){
     i.oninput=calc;
     c.append(o.value+" ",i,document.createElement("br"));
     if(activeCustomer && products[p.value]){
-      tr.children[3].firstChild.value=
-        products[p.value].prices[activeCustomer.type][o.value]||0;
+      tr.children[3].firstChild.value=products[p.value].prices[activeCustomer.type][o.value]||0;
     }
   });
 }
@@ -236,42 +227,52 @@ function td(e){const d=document.createElement("td");d.append(e);return d;}
 
 function calc(){
   let sub=0,cases=0,kegs=0;
+  invoiceItems=[];
   itemsTable.querySelectorAll("tbody tr").forEach(r=>{
-    let qty=0;
     r.children[2].querySelectorAll("input").forEach(i=>{
-      qty+=+i.value;
-      if(i.dataset.type==="Case") cases+=+i.value;
-      if(i.dataset.type.includes("Keg")) kegs+=+i.value;
+      const qty=+i.value;
+      const price=+r.children[3].firstChild.value||0;
+      const line=qty*price;
+      invoiceItems.push({
+        product:r.children[0].firstChild.value,
+        type:i.dataset.type,
+        quantity:qty,
+        unitPrice:price,
+        lineTotal:line
+      });
+      if(i.dataset.type==="Case") cases+=qty;
+      if(i.dataset.type.includes("Keg")) kegs+=qty;
+      sub+=line;
     });
-    const line=qty*(+r.children[3].firstChild.value||0);
-    r.children[4].innerText="$"+line.toFixed(2);
-    sub+=line;
+    r.children[4].innerText="$"+sub.toFixed(2);
   });
 
-  const disc = cases>10 ? sub*0.10 : 0;
+  const disc=cases>10?sub*0.10:0;
+  const tax=activeCustomer?.type==="restaurant"?(sub-disc)*0.06:0;
+  const keg=kegs*KEG_DEPOSIT;
 
-  /* ✅ CORRECT TAX RULE */
-  const tax =
-    activeCustomer?.type === "restaurant"
-      ? (sub - disc) * 0.06
-      : 0;
+  sub.innerText="$"+sub.toFixed(2);
+  disc.innerText="$"+disc.toFixed(2);
+  tax.innerText="$"+tax.toFixed(2);
+  keg.innerText="$"+keg.toFixed(2);
+  total.innerText="$"+(sub-disc+tax+keg).toFixed(2);
+}
 
-  const keg = kegs * KEG_DEPOSIT;
-
-  document.getElementById("sub").innerText="$"+sub.toFixed(2);
-  document.getElementById("disc").innerText="$"+disc.toFixed(2);
-  document.getElementById("tax").innerText="$"+tax.toFixed(2);
-  document.getElementById("keg").innerText="$"+keg.toFixed(2);
-  document.getElementById("total").innerText="$"+(sub-disc+tax+keg).toFixed(2);
+function finalizeInvoice(){
+  if(!activeCustomer||!invoiceItems.length) return alert("Invoice incomplete");
+  invoiceStatus="final";
+  document.querySelectorAll("input,select,button").forEach(e=>e.disabled=true);
+  generatePDF();
+  invoiceNum++;
+  saveState();
 }
 
 function generatePDF(){
   const {jsPDF}=window.jspdf;
   const d=new jsPDF();
-  d.text("Invoice #"+invoiceNum,14,14);
+  d.text("Invoice #"+invoiceNumber.innerText,14,14);
+  d.text("Customer: "+activeCustomer.name,14,22);
   d.save("invoice.pdf");
-  invoiceNum++;
-  saveState();
 }
 </script>
 </body>
