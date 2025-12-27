@@ -232,9 +232,13 @@ function addRow(){
   const p=document.createElement("input");
 p.onblur = () => checkNewProduct(p.value);
 
-  const t=document.createElement("select");
-  ["Case","Bottle","1/6 Keg","1/2 Keg"].forEach(v=>t.add(new Option(v,v)));
-
+  const typesDiv = document.createElement("div");
+typesDiv.innerHTML = `
+  <label><input type="checkbox" data-type="Case"> Case</label><br>
+  <label><input type="checkbox" data-type="Bottle"> Bottle</label><br>
+  <label><input type="checkbox" data-type="1/6 Keg"> 1/6 Keg</label><br>
+  <label><input type="checkbox" data-type="1/2 Keg"> 1/2 Keg</label>
+`;
   const q=document.createElement("input");
   q.type="number"; q.value=1; q.oninput=calc;
 
