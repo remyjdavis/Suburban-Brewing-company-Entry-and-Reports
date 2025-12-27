@@ -13,17 +13,20 @@
 body { font-family: Arial, sans-serif; background:#f4f4f4; margin:0; padding:20px }
 .container { background:#fff; padding:20px; max-width:1100px; margin:auto }
 header { display:flex; justify-content:space-between; align-items:flex-start }
-header img { width:80px; height:auto; object-fit:contain; margin-right:15px }
+header img { width:80px; margin-right:15px }
 .company { display:flex }
-h1 { margin:0 }
 table { width:100%; border-collapse:collapse; margin-top:15px }
-th,td { border:1px solid #ccc; padding:8px; text-align:left }
+th,td { border:1px solid #ccc; padding:8px }
 th { background:#18b89a; color:#fff }
 input,select { width:100%; padding:6px }
 button { padding:8px 14px; margin-top:10px; margin-right:6px }
-.totals { max-width:300px; margin-left:auto; margin-top:20px }
-.totals div { display:flex; justify-content:space-between; margin:6px 0 }
 .hidden { display:none }
+.card {
+  border:2px solid #18b89a;
+  padding:15px;
+  margin-top:10px;
+  background:#f9fffd;
+}
 </style>
 </head>
 
@@ -37,8 +40,8 @@ button { padding:8px 14px; margin-top:10px; margin-right:6px }
       <strong>Suburban Brewing Company</strong><br>
       3041 Horseshoe Pike Suite 120 & 130<br>
       Honey Brook, PA 19344<br>
-      Sales Rep: Remy Davis | Phone: 9086421019<br>
-      Email: Remyjdavis90@gmail.com
+      Sales Rep: Remy Davis | 9086421019<br>
+      Remyjdavis90@gmail.com
     </div>
   </div>
 
@@ -52,18 +55,41 @@ button { padding:8px 14px; margin-top:10px; margin-right:6px }
 
 <hr>
 
+<!-- ================= CUSTOMER ================= -->
+
 <h3>Customer</h3>
-<input id="customerName" placeholder="Customer Name" autocomplete="off">
+<input id="customerName" list="customerList" placeholder="Start typing customer…" onblur="checkNewCustomer()">
+<datalist id="customerList"></datalist>
+
+<div id="newCustomerCard" class="card hidden">
+  <h4>New Customer</h4>
+  <input id="newCustName" placeholder="Customer Name"><br><br>
+  <input id="newCustAddress" placeholder="Address"><br><br>
+  <select id="newCustType">
+    <option value="">Customer Type</option>
+    <option>Restaurant</option>
+    <option>Wholesaler</option>
+  </select><br><br>
+  <select id="newCustPayment">
+    <option value="">Payment Type</option>
+    <option>Check</option>
+    <option>ACH</option>
+    <option>Fintech</option>
+  </select><br><br>
+  <button onclick="saveNewCustomer()">Save Customer</button>
+</div>
+
+<!-- ================= ITEMS ================= -->
 
 <h3>Invoice Items</h3>
 
 <table id="itemsTable">
 <thead>
 <tr>
-  <th>Product Name</th>
-  <th>Product Type</th>
+  <th>Product</th>
+  <th>Type</th>
   <th>Quantity</th>
-  <th>Unit Price</th>
+  <th>Price</th>
   <th>Total</th>
 </tr>
 </thead>
@@ -72,14 +98,30 @@ button { padding:8px 14px; margin-top:10px; margin-right:6px }
 
 <button onclick="addRow()">Add Item</button>
 
-<div class="totals">
-  <div><span>Subtotal</span><span id="sub">$0.00</span></div>
-  <div><span>Discount</span><span id="disc">$0.00</span></div>
-  <div><span>Sales Tax (6%)</span><span id="tax">$0.00</span></div>
-  <div><span>Keg Deposit</span><span id="keg">$0.00</span></div>
-  <hr>
-  <div><strong>Total</strong><strong id="total">$0.00</strong></div>
+<!-- ================= NEW PRODUCT CARD ================= -->
+
+<div id="newProductCard" class="card hidden">
+  <h4>New Product</h4>
+  <input id="newProdName" placeholder="Product Name"><br><br>
+
+  <div>
+    <label><input type="checkbox" value="Case"> Case</label>
+    <input data-type="Case" type="number" placeholder="Price"><br>
+
+    <label><input type="checkbox" value="Bottle"> Bottle</label>
+    <input data-type="Bottle" type="number" placeholder="Price"><br>
+
+    <label><input type="checkbox" value="1/6 Keg"> 1/6 Keg</label>
+    <input data-type="1/6 Keg" type="number" placeholder="Price"><br>
+
+    <label><input type="checkbox" value="1/2 Keg"> 1/2 Keg</label>
+    <input data-type="1/2 Keg" type="number" placeholder="Price"><br>
+  </div><br>
+
+  <button onclick="saveNewProduct()">Save Product</button>
 </div>
+
+<hr>
 
 <button onclick="generatePDF()">Print</button>
 <button onclick="saveInvoice()">Save</button>
@@ -90,35 +132,53 @@ button { padding:8px 14px; margin-top:10px; margin-right:6px }
 </div>
 
 <script>
-const types = ["Case","Bottle","1/6 Keg","1/2 Keg"];
-
-document.getElementById("invoiceDate").innerText =
-  new Date().toLocaleDateString();
+/* ================= BASE ================= */
+document.getElementById("invoiceDate").innerText = new Date().toLocaleDateString();
 
 function refreshBarcode(){
-  const val = document.getElementById("invoiceNumber").value;
-  if(!val) return;
-  JsBarcode("#barcodeCanvas", val, {
-    format:"CODE128",
-    width:2,
-    height:50,
-    displayValue:false
+  JsBarcode("#barcodeCanvas", invoiceNumber.value, {
+    format:"CODE128", width:2, height:50, displayValue:false
   });
 }
 refreshBarcode();
 
+/* ================= DATA ================= */
+let customers = [];
+let products = [];
+
+/* ================= CUSTOMER LOGIC ================= */
+function checkNewCustomer(){
+  const val = customerName.value.trim();
+  if (!val) return;
+  if (!customers.includes(val)){
+    newCustomerCard.classList.remove("hidden");
+    newCustName.value = val;
+  }
+}
+
+function saveNewCustomer(){
+  customers.push(newCustName.value);
+  const opt = document.createElement("option");
+  opt.value = newCustName.value;
+  customerList.append(opt);
+  customerName.value = newCustName.value;
+  newCustomerCard.classList.add("hidden");
+}
+
+/* ================= PRODUCT LOGIC ================= */
 function addRow(){
   const tr = document.createElement("tr");
 
   const p = document.createElement("input");
-  p.placeholder = "Product Name";
+  p.placeholder="Product";
+  p.onblur=()=>checkNewProduct(p);
 
   const t = document.createElement("select");
-  t.multiple = true;
-  types.forEach(v=>t.add(new Option(v,v)));
+  t.multiple=true;
+  ["Case","Bottle","1/6 Keg","1/2 Keg"].forEach(v=>t.add(new Option(v,v)));
 
   const q = document.createElement("div");
-  t.onchange = ()=>buildQty(q,t);
+  t.onchange=()=>buildQty(q,t);
 
   const price = document.createElement("input");
   price.type="number"; price.value=0; price.oninput=calc;
@@ -126,89 +186,39 @@ function addRow(){
   const total = document.createElement("span");
   total.innerText="$0.00";
 
-  tr.append(td(p), td(t), td(q), td(price), td(total));
-  document.querySelector("#itemsTable tbody").append(tr);
+  tr.append(td(p),td(t),td(q),td(price),td(total));
+  itemsTable.querySelector("tbody").append(tr);
 }
 
-function buildQty(container,select){
-  container.innerHTML="";
-  [...select.selectedOptions].forEach(o=>{
+function checkNewProduct(input){
+  if (!products.includes(input.value)){
+    newProductCard.classList.remove("hidden");
+    newProdName.value=input.value;
+  }
+}
+
+function saveNewProduct(){
+  products.push(newProdName.value);
+  newProductCard.classList.add("hidden");
+}
+
+/* ================= SHARED ================= */
+function buildQty(c,s){
+  c.innerHTML="";
+  [...s.selectedOptions].forEach(o=>{
     const i=document.createElement("input");
-    i.type="number"; i.value=1;
-    i.oninput=calc;
-    container.append(o.value+" ",i,document.createElement("br"));
+    i.type="number"; i.value=1; i.oninput=calc;
+    c.append(o.value+" ",i,document.createElement("br"));
   });
 }
+function td(e){const d=document.createElement("td");d.append(e);return d;}
+function calc(){}
 
-function td(el){
-  const d=document.createElement("td");
-  d.append(el);
-  return d;
-}
-
-function calc(){
-  let subtotal=0;
-  document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
-    const price=+r.children[3].firstChild.value;
-    let qty=0;
-    r.children[2].querySelectorAll("input").forEach(i=>qty+=+i.value);
-    const line=price*qty;
-    r.children[4].innerText="$"+line.toFixed(2);
-    subtotal+=line;
-  });
-
-  const discount = subtotal >= 10 ? subtotal * 0.10 : 0;
-  const tax = subtotal * 0.06;
-  const keg = 30;
-
-  sub.innerText="$"+subtotal.toFixed(2);
-  disc.innerText="$"+discount.toFixed(2);
-  tax.innerText="$"+tax.toFixed(2);
-  keg.innerText="$"+keg.toFixed(2);
-  total.innerText="$"+(subtotal-discount+tax+keg).toFixed(2);
-}
-
-function generatePDF(){
-  const { jsPDF } = window.jspdf;
-  const d = new jsPDF();
-
-  d.addImage("background.jpg","PNG",14,10,20,20);
-  d.text("Suburban Brewing Company",40,16);
-  d.text("3041 Horseshoe Pike Suite 120 & 130",40,21);
-  d.text("Honey Brook, PA 19344",40,26);
-
-  const bc = barcodeCanvas.toDataURL("image/png");
-  d.addImage(bc,"PNG",140,10,50,20);
-
-  d.text(`Invoice #: ${invoiceNumber.value}`,140,35);
-  d.text(`Date: ${invoiceDate.innerText}`,140,40);
-
-  d.text("Bill To:",14,50);
-  d.text(customerName.value,14,56);
-
-  const rows=[];
-  document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
-    rows.push([
-      r.children[0].firstChild.value,
-      [...r.children[1].firstChild.selectedOptions].map(o=>o.value).join(", "),
-      [...r.children[2].querySelectorAll("input")].map(i=>i.value).join(", "),
-      r.children[3].firstChild.value,
-      r.children[4].innerText
-    ]);
-  });
-
-  d.autoTable({
-    startY:65,
-    head:[["Product","Type","Qty","Price","Total"]],
-    body:rows
-  });
-
-  d.text(paymentNote.innerText,14,d.lastAutoTable.finalY+15);
-  d.save("invoice.pdf");
-}
-
-function saveInvoice(){ alert("Save logic wired to Apps Script"); }
-function emailInvoice(){ alert("Email logic wired to Apps Script"); }
+/* ================= PLACEHOLDERS ================= */
+function generatePDF(){}
+function saveInvoice(){}
+function emailInvoice(){}
 </script>
+
 </body>
 </html>
