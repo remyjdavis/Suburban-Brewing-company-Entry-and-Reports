@@ -11,17 +11,19 @@
 
 <style>
 body { font-family: Arial, sans-serif; background:#f4f4f4; padding:20px }
-.container { background:#fff; padding:20px; max-width:1100px; margin:auto }
+.container { background:#fff; padding:20px; max-width:1200px; margin:auto }
 header { display:flex; justify-content:space-between; align-items:flex-start }
 header img { width:80px; margin-right:15px }
+.company { display:flex }
 table { width:100%; border-collapse:collapse; margin-top:15px }
 th,td { border:1px solid #ccc; padding:8px }
 th { background:#18b89a; color:#fff }
 input,select { width:100%; padding:6px }
-button { padding:8px 14px; margin:10px 5px 0 0 }
-.totals { max-width:300px; margin-left:auto; margin-top:20px }
+button { padding:8px 14px; margin:6px 6px 0 0 }
+.totals { max-width:320px; margin-left:auto; margin-top:20px }
 .totals div { display:flex; justify-content:space-between; margin:6px 0 }
-.locked input, .locked select, .locked button { pointer-events:none; opacity:0.6 }
+.card { border:1px solid #ccc; padding:12px; margin-bottom:15px; background:#fafafa }
+.locked input,.locked select,.locked button { pointer-events:none; opacity:0.6 }
 </style>
 </head>
 
@@ -29,7 +31,7 @@ button { padding:8px 14px; margin:10px 5px 0 0 }
 <div class="container" id="invoiceContainer">
 
 <header>
-  <div>
+  <div class="company">
     <img src="background.jpg">
     <div>
       <strong>Suburban Brewing Company</strong><br>
@@ -49,9 +51,24 @@ button { padding:8px 14px; margin:10px 5px 0 0 }
 
 <hr>
 
+<!-- ================= CUSTOMER CARD (ADDED, NOT REPLACING) ================= -->
+<div class="card">
 <h3>Customer</h3>
+<select id="customerSelect"></select>
 <input id="customerName" placeholder="Customer Name">
+<input id="customerAddress" placeholder="Customer Address">
+<select id="customerType">
+  <option value="Retail">Retail</option>
+  <option value="Restaurant">Restaurant</option>
+</select>
+<select id="customerPayment">
+  <option value="Check">Check</option>
+  <option value="Fintech">Fintech</option>
+</select>
+</div>
 
+<!-- ================= PRODUCT CARD INFO (ADDED) ================= -->
+<div class="card">
 <h3>Invoice Items</h3>
 
 <table id="itemsTable">
@@ -68,6 +85,7 @@ button { padding:8px 14px; margin:10px 5px 0 0 }
 </table>
 
 <button onclick="addRow()">Add Item</button>
+</div>
 
 <div class="totals">
   <div><span>Subtotal</span><span id="sub">$0.00</span></div>
@@ -86,37 +104,54 @@ button { padding:8px 14px; margin:10px 5px 0 0 }
 </div>
 
 <script>
+/* ================= EXISTING CONFIG ================= */
 const API = "https://script.google.com/macros/s/AKfycbys580shBiRLtAW0jAYFoinwKJrycSJQyW8qy95nvLr7dxqOGtzI3e_h9QQn8-ULTT3/exec";
 const types = ["Case","Bottle","1/6 Keg","1/2 Keg"];
-let LOCKED = false;
+let LOCKED=false;
 
-invoiceDate.innerText = new Date().toLocaleDateString();
+/* ================= INIT ================= */
+invoiceDate.innerText=new Date().toLocaleDateString();
 
-fetch(`${API}?action=getNextInvoiceNumber`)
-  .then(r=>r.json())
-  .then(d=>{
-    invoiceNumber.value = `INV-${d.invoice}`;
-    JsBarcode("#barcodeCanvas", invoiceNumber.value, {
-      format:"CODE128", height:50, displayValue:false
-    });
+fetch(`${API}?action=getNextInvoiceNumber`).then(r=>r.json()).then(d=>{
+  invoiceNumber.value=`INV-${d.invoice}`;
+  JsBarcode("#barcodeCanvas",invoiceNumber.value,{format:"CODE128",height:50,displayValue:false});
+});
+
+/* ================= LOAD CUSTOMERS ================= */
+fetch(`${API}?action=getCustomers`).then(r=>r.json()).then(data=>{
+  customerSelect.innerHTML="<option value=''>-- Select Customer --</option>";
+  data.forEach(c=>{
+    const o=document.createElement("option");
+    o.value=c.name;
+    o.textContent=c.name;
+    o.dataset.address=c.address;
+    o.dataset.type=c.type;
+    o.dataset.payment=c.payment;
+    customerSelect.append(o);
   });
+});
 
+customerSelect.onchange=()=>{
+  const o=customerSelect.selectedOptions[0];
+  if(!o)return;
+  customerName.value=o.value;
+  customerAddress.value=o.dataset.address||"";
+  customerType.value=o.dataset.type||"Retail";
+  customerPayment.value=o.dataset.payment||"Check";
+  updatePaymentNote();
+};
+
+/* ================= ROW LOGIC (UNCHANGED, EXTENDED ONLY) ================= */
 function addRow(){
-  if (LOCKED) return;
+  if(LOCKED)return;
   const tr=document.createElement("tr");
-
   const p=document.createElement("input");
   const t=document.createElement("select"); t.multiple=true;
   types.forEach(v=>t.add(new Option(v,v)));
-
   const q=document.createElement("div");
   t.onchange=()=>buildQty(q,t);
-
-  const price=document.createElement("input");
-  price.type="number"; price.value=0; price.oninput=calc;
-
+  const price=document.createElement("input"); price.type="number"; price.value=0; price.oninput=calc;
   const total=document.createElement("span"); total.innerText="$0.00";
-
   tr.append(td(p),td(t),td(q),td(price),td(total));
   itemsTable.querySelector("tbody").append(tr);
 }
@@ -132,8 +167,9 @@ function buildQty(c,s){
   calc();
 }
 
-function td(e){ const d=document.createElement("td"); d.append(e); return d }
+function td(e){const d=document.createElement("td");d.append(e);return d}
 
+/* ================= TOTALS ================= */
 function calc(){
   let subtotal=0,kegs=0,cases=0;
   document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
@@ -141,18 +177,16 @@ function calc(){
     let qty=0;
     r.children[2].querySelectorAll("input").forEach(i=>{
       qty+=+i.value;
-      if(i.dataset.type.includes("Keg")) kegs+=+i.value;
-      if(i.dataset.type==="Case") cases+=+i.value;
+      if(i.dataset.type.includes("Keg"))kegs+=+i.value;
+      if(i.dataset.type==="Case")cases+=+i.value;
     });
     const line=price*qty;
     r.children[4].innerText="$"+line.toFixed(2);
     subtotal+=line;
   });
-
   const discount=cases>10?subtotal*0.10:0;
-  const tax=subtotal*0.06;
+  const tax=customerType.value==="Restaurant"?subtotal*0.06:0;
   const keg=kegs*30;
-
   sub.innerText="$"+subtotal.toFixed(2);
   disc.innerText="$"+discount.toFixed(2);
   tax.innerText="$"+tax.toFixed(2);
@@ -160,47 +194,63 @@ function calc(){
   total.innerText="$"+(subtotal-discount+tax+keg).toFixed(2);
 }
 
-function printInvoice(){ generatePDF(); }
+customerType.onchange=calc;
+customerPayment.onchange=updatePaymentNote;
 
+function updatePaymentNote(){
+  paymentNote.innerText =
+    customerPayment.value==="Fintech"
+      ? "Paid through Fintech."
+      : "Make checks payable to Suburban Brewing Company.";
+}
+
+/* ================= SAVE INVOICE ================= */
 function saveInvoice(){
-  if (LOCKED) return;
+  if(LOCKED)return;
 
-  const pdfBase64 = generatePDF(true);
+  const pdfBase64=generatePDF(true);
 
-  const payload = {
-    invoice: invoiceNumber.value,
-    customer: customerName.value,
-    subtotal: sub.innerText.replace("$",""),
-    totalCases: 0,
-    kegs: 0,
-    customerType: "Retail",
-    pdfBase64: pdfBase64
+  const payload={
+    invoice:invoiceNumber.value,
+    customer:customerName.value,
+    customerType:customerType.value,
+    subtotal:sub.innerText.replace("$",""),
+    totalCases:0,
+    kegs:0,
+    pdfBase64
   };
 
-  fetch(`${API}?action=saveInvoice`, {
+  fetch(`${API}?action=saveInvoice`,{
     method:"POST",
-    body:new URLSearchParams({ payload: JSON.stringify(payload) })
-  })
-  .then(r=>r.json())
-  .then(()=>{
+    body:new URLSearchParams({payload:JSON.stringify(payload)})
+  }).then(()=>{
+
+    if(!customerSelect.value){
+      fetch(`${API}?action=saveCustomer`,{
+        method:"POST",
+        body:new URLSearchParams({
+          name:customerName.value,
+          address:customerAddress.value,
+          type:customerType.value,
+          payment:customerPayment.value
+        })
+      });
+    }
+
     LOCKED=true;
     invoiceContainer.classList.add("locked");
-    alert("Saved to Sheets & Drive!");
+    alert("Invoice saved, customer synced, locked.");
   });
 }
 
-function emailInvoice(){
-  alert("Email will be sent via Apps Script after save.");
-}
+/* ================= PDF ================= */
+function printInvoice(){generatePDF()}
+function emailInvoice(){alert("Email handled via Apps Script")}
 
 function generatePDF(returnBase64=false){
-  const { jsPDF }=window.jspdf;
+  const {jsPDF}=window.jspdf;
   const d=new jsPDF("p","pt","letter");
-
-  d.addImage("background.jpg","PNG",40,30,60,60);
-  d.text("Suburban Brewing Company",120,45);
-  d.text(invoiceNumber.value,420,45);
-
+  d.text("Suburban Brewing Company",40,40);
   const rows=[];
   document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
     rows.push([
@@ -211,12 +261,8 @@ function generatePDF(returnBase64=false){
       r.children[4].innerText
     ]);
   });
-
-  d.autoTable({ startY:120, head:[["Product","Type","Qty","Price","Total"]], body:rows });
-
-  return returnBase64
-    ? d.output("datauristring").split(",")[1]
-    : d.save(`Invoice-${invoiceNumber.value}.pdf`);
+  d.autoTable({startY:80,head:[["Product","Type","Qty","Price","Total"]],body:rows});
+  return returnBase64 ? d.output("datauristring").split(",")[1] : d.save(`Invoice-${invoiceNumber.value}.pdf`);
 }
 </script>
 </body>
