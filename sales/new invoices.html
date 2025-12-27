@@ -20,10 +20,9 @@ table { width:100%; border-collapse:collapse; margin-top:15px }
 th,td { border:1px solid #ccc; padding:8px; text-align:left }
 th { background:#18b89a; color:#fff }
 input,select { width:100%; padding:6px }
-button { padding:8px 14px; margin-top:10px }
+button { padding:8px 14px; margin-top:10px; margin-right:5px }
 .totals { max-width:300px; margin-left:auto; margin-top:20px }
 .totals div { display:flex; justify-content:space-between; margin:6px 0 }
-.hidden { display:none }
 </style>
 </head>
 
@@ -80,14 +79,17 @@ button { padding:8px 14px; margin-top:10px }
   <div><strong>Total</strong><strong id="total">$0.00</strong></div>
 </div>
 
-<button onclick="generatePDF()">Print Invoice</button>
+<div style="margin-top:15px">
+  <button onclick="printInvoice()">Print</button>
+  <button onclick="saveInvoice()">Save</button>
+  <button onclick="emailInvoice()">Email</button>
+</div>
 
 <p id="paymentNote">Make checks payable to Suburban Brewing Company.</p>
 
 </div>
 
 <script>
-const products = ["Beer A","Beer B","Beer C"];
 const types = ["Case","Bottle","1/6 Keg","1/2 Keg"];
 
 document.getElementById("invoiceDate").innerText =
@@ -109,12 +111,14 @@ function addRow(){
   const t = document.createElement("select");
   t.multiple = true;
   types.forEach(v=>t.add(new Option(v,v)));
-  t.onchange = ()=>buildQty(q,t);
 
   const q = document.createElement("div");
+  t.onchange = ()=>buildQty(q,t);
 
   const price = document.createElement("input");
-  price.type="number"; price.value=0; price.oninput=calc;
+  price.type="number";
+  price.value=0;
+  price.oninput=calc;
 
   const total = document.createElement("span");
   total.innerText="$0.00";
@@ -127,10 +131,13 @@ function buildQty(container,select){
   container.innerHTML="";
   [...select.selectedOptions].forEach(o=>{
     const i=document.createElement("input");
-    i.type="number"; i.value=1; i.dataset.type=o.value;
+    i.type="number";
+    i.value=1;
+    i.dataset.type=o.value;
     i.oninput=calc;
     container.append(o.value+" ",i,document.createElement("br"));
   });
+  calc();
 }
 
 function td(el){
@@ -154,58 +161,95 @@ function calc(){
   const tax = subtotal * 0.06;
   const keg = 30;
 
-  document.getElementById("sub").innerText="$"+subtotal.toFixed(2);
-  document.getElementById("disc").innerText="$"+discount.toFixed(2);
-  document.getElementById("tax").innerText="$"+tax.toFixed(2);
-  document.getElementById("keg").innerText="$"+keg.toFixed(2);
-  document.getElementById("total").innerText="$"+(subtotal-discount+tax+keg).toFixed(2);
+  sub.innerText="$"+subtotal.toFixed(2);
+  disc.innerText="$"+discount.toFixed(2);
+  tax.innerText="$"+tax.toFixed(2);
+  keg.innerText="$"+keg.toFixed(2);
+  total.innerText="$"+(subtotal-discount+tax+keg).toFixed(2);
+}
+
+function printInvoice(){
+  generatePDF();
+}
+
+function saveInvoice(){
+  const data = {
+    invoiceNumber: invoiceNumber.value,
+    date: invoiceDate.innerText,
+    customer: customerName.value,
+    total: total.innerText
+  };
+  localStorage.setItem(`invoice_${invoiceNumber.value}`, JSON.stringify(data));
+  alert("Invoice saved.");
+}
+
+function emailInvoice(){
+  alert("Email will be handled by Apps Script.");
 }
 
 function generatePDF(){
   const { jsPDF } = window.jspdf;
-  const d = new jsPDF();
+  const d = new jsPDF("p","pt","letter");
+
+  d.addImage("background.jpg","PNG",40,30,60,60);
+
+  d.setFontSize(12);
+  d.setFont("helvetica","bold");
+  d.text("Suburban Brewing Company",120,45);
 
   d.setFontSize(9);
-  d.addImage("background.jpg","PNG",14,10,20,20);
-  d.text("Suburban Brewing Company",40,16);
-  d.text("3041 Horseshoe Pike Suite 120 & 130",40,21);
-  d.text("Honey Brook, PA 19344",40,26);
+  d.setFont("helvetica","normal");
+  d.text("3041 Horseshoe Pike Suite 120 & 130",120,60);
+  d.text("Honey Brook, PA 19344",120,72);
+  d.text("Sales Rep: Remy Davis | Phone: 9086421019",120,84);
+  d.text("Email: Remyjdavis90@gmail.com",120,96);
 
-  const barcodeCanvas = document.getElementById("barcodeCanvas");
+  d.text(`Invoice #: ${invoiceNumber.value}`,420,45);
+  d.text(`Date: ${invoiceDate.innerText}`,420,60);
+
   const barcodeImg = barcodeCanvas.toDataURL("image/png");
-  d.addImage(barcodeImg, "PNG", 140, 10, 50, 20);
+  d.addImage(barcodeImg,"PNG",420,70,130,35);
 
-  d.text(`Invoice #: ${invoiceNumber.value}`,140,35);
-  d.text(`Date: ${invoiceDate.innerText}`,140,40);
+  d.line(40,115,570,115);
 
-  d.text("Bill To:",14,50);
-  d.text(customerName.value,14,56);
+  d.text("Bill To:",40,140);
+  d.text(customerName.value || "",40,155);
 
   const rows=[];
   document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
-    const name=r.children[0].firstChild.value;
-    const types=[...r.children[1].firstChild.selectedOptions].map(o=>o.value).join(", ");
-    const qty=[...r.children[2].querySelectorAll("input")].map(i=>`${i.dataset.type}:${i.value}`).join(" ");
-    rows.push([name,types,qty,r.children[3].firstChild.value,r.children[4].innerText]);
+    rows.push([
+      r.children[0].firstChild.value,
+      [...r.children[1].firstChild.selectedOptions].map(o=>o.value).join(", "),
+      [...r.children[2].querySelectorAll("input")].map(i=>`${i.dataset.type}:${i.value}`).join(" "),
+      `$${Number(r.children[3].firstChild.value).toFixed(2)}`,
+      r.children[4].innerText
+    ]);
   });
 
   d.autoTable({
-    startY:65,
+    startY:170,
     head:[["Product","Type","Qty","Price","Total"]],
-    body:rows
+    body:rows,
+    styles:{ fontSize:8 },
+    headStyles:{ fillColor:[24,184,154] }
   });
 
-  let y = d.lastAutoTable.finalY + 10;
-  d.text(`Subtotal: ${sub.innerText}`,140,y);
-  d.text(`Discount: ${disc.innerText}`,140,y+5);
-  d.text(`Sales Tax: ${tax.innerText}`,140,y+10);
-  d.text(`Keg Deposit: ${keg.innerText}`,140,y+15);
-  d.text(`Total: ${total.innerText}`,140,y+25);
+  let y = d.lastAutoTable.finalY + 20;
 
-  d.text(paymentNote.innerText,14,y+35);
+  d.text(`Subtotal: ${sub.innerText}`,420,y);
+  d.text(`Discount: ${disc.innerText}`,420,y+14);
+  d.text(`Sales Tax: ${tax.innerText}`,420,y+28);
+  d.text(`Keg Deposit: ${keg.innerText}`,420,y+42);
 
-  d.save("invoice.pdf");
+  d.setFont("helvetica","bold");
+  d.text(`TOTAL: ${total.innerText}`,420,y+62);
+
+  d.setFont("helvetica","normal");
+  d.text(paymentNote.innerText,40,y+90);
+
+  d.save(`Invoice-${invoiceNumber.value}.pdf`);
 }
 </script>
+
 </body>
 </html>
