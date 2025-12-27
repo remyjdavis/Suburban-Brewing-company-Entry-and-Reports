@@ -195,6 +195,149 @@ function goBack(){
 }
 /* ===================================== */
 </script>
+<!-- ========================================================= -->
+<!-- =============== BACKEND WIRING (ADD ONLY) =============== -->
+<!-- ========================================================= -->
+
+<script>
+/* ===================== BACKEND CONSTANT ===================== */
+const BACKEND_API = "https://script.google.com/macros/s/AKfycbys580shBiRLtAW0jAYFoinwKJrycSJQyW8qy95nvLr7dxqOGtzI3e_h9QQn8-ULTT3/exec";
+/* ============================================================ */
+
+
+/* ===================== SAVE NEW CUSTOMER ===================== */
+/* Wrap existing confirmCustomer() WITHOUT touching it */
+if (typeof confirmCustomer === "function") {
+  const __confirmCustomer = confirmCustomer;
+  confirmCustomer = function () {
+    const name = mcName.value.trim();
+    const address = mcAddress.value.trim();
+    const type = mcType.value;
+    const payment = mcPayment.value;
+
+    fetch(
+      BACKEND_API +
+        "?action=saveCustomer" +
+        "&name=" + encodeURIComponent(name) +
+        "&address=" + encodeURIComponent(address) +
+        "&type=" + encodeURIComponent(type) +
+        "&payment=" + encodeURIComponent(payment)
+    )
+      .then(r => r.json())
+      .then(() => {
+        __confirmCustomer(); // preserve existing behavior
+      });
+  };
+}
+/* ============================================================ */
+
+
+/* ===================== SAVE NEW PRODUCT ===================== */
+/* Supports MULTI-TYPE + MULTI-PRICE */
+if (typeof confirmProduct === "function") {
+  const __confirmProduct = confirmProduct;
+  confirmProduct = function () {
+    const productName = mpName.value.trim();
+
+    document.querySelectorAll("#productTypes input").forEach(row => {
+      const type = row.dataset.type;
+      const price = parseFloat(row.value || 0);
+
+      fetch(
+        BACKEND_API +
+          "?action=saveProduct" +
+          "&product=" + encodeURIComponent(productName) +
+          "&type=" + encodeURIComponent(type) +
+          "&price=" + encodeURIComponent(price)
+      );
+    });
+
+    __confirmProduct(); // keep existing UI logic
+  };
+}
+/* ============================================================ */
+
+
+/* ===================== SAVE INVOICE ===================== */
+/* Wrap existing saveInvoice() */
+if (typeof saveInvoice === "function") {
+  const __saveInvoice = saveInvoice;
+
+  saveInvoice = function () {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+
+    pdf.text("Invoice " + invoiceNumber.value, 14, 14);
+    pdf.autoTable({ html: "#itemsTable" });
+
+    const pdfBase64 = btoa(
+      new Uint8Array(pdf.output("arraybuffer"))
+        .reduce((d, b) => d + String.fromCharCode(b), "")
+    );
+
+    let subtotal = parseFloat(sub.innerText.replace("$", ""));
+    let discount = parseFloat(disc.innerText.replace("$", ""));
+    let tax = parseFloat(taxEl.innerText.replace("$", ""));
+    let deposit = parseFloat(keg.innerText.replace("$", ""));
+    let totalVal = parseFloat(total.innerText.replace("$", ""));
+
+    let totalCases = 0;
+    let totalKegs = 0;
+
+    document.querySelectorAll("#itemsTable tbody tr").forEach(r => {
+      r.children[2].querySelectorAll("input").forEach(i => {
+        if (i.dataset.type === "Case") totalCases += +i.value;
+        if (i.dataset.type.includes("Keg")) totalKegs += +i.value;
+      });
+    });
+
+    const payload = {
+      invoice: invoiceNumber.value,
+      customer: customerName.value,
+      customerType: selectedCustomer?.type || "",
+      subtotal,
+      totalCases,
+      kegs: totalKegs,
+      pdfBase64
+    };
+
+    fetch(BACKEND_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "action=saveInvoice&payload=" + encodeURIComponent(JSON.stringify(payload))
+    })
+      .then(r => r.json())
+      .then(() => {
+        __saveInvoice(); // preserve any existing behavior
+        alert("Invoice saved to Sheets and Drive");
+      });
+  };
+}
+/* ============================================================ */
+
+
+/* ===================== SAVE LINE ITEMS ===================== */
+/* Additive – no UI change */
+function saveInvoiceLineItems(invoiceNumberValue) {
+  document.querySelectorAll("#itemsTable tbody tr").forEach(r => {
+    const product = r.children[0].querySelector("input").value;
+    const price = r.children[3].querySelector("input").value;
+
+    r.children[2].querySelectorAll("input").forEach(i => {
+      fetch(
+        BACKEND_API +
+          "?action=saveInvoiceItem" +
+          "&invoice=" + encodeURIComponent(invoiceNumberValue) +
+          "&product=" + encodeURIComponent(product) +
+          "&type=" + encodeURIComponent(i.dataset.type) +
+          "&qty=" + encodeURIComponent(i.value) +
+          "&price=" + encodeURIComponent(price)
+      );
+    });
+  });
+}
+/* ============================================================ */
+</script>
 
 </body>
 </html>
