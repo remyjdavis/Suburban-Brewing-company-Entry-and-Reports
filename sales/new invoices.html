@@ -5,7 +5,6 @@
 <title>New Invoice | Suburban Brewing Company</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<!-- jsPDF + AutoTable -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
@@ -14,34 +13,18 @@
 body { font-family: Arial, sans-serif; background:#f4f4f4; margin:0; padding:20px }
 .container { background:#fff; padding:20px; max-width:1100px; margin:auto }
 header { display:flex; justify-content:space-between; align-items:flex-start }
-header img { width:80px; height:auto }
 .company { display:flex; gap:15px }
-h1 { margin:0 }
+header img { width:80px; height:auto }
 table { width:100%; border-collapse:collapse; margin-top:15px }
-th,td { border:1px solid #ccc; padding:8px; text-align:left }
+th,td { border:1px solid #ccc; padding:8px }
 th { background:#18b89a; color:#fff }
 input,select { width:100%; padding:6px }
 button { padding:8px 14px; margin-top:10px }
-.totals { max-width:300px; margin-left:auto; margin-top:20px }
+.totals { max-width:320px; margin-left:auto; margin-top:20px }
 .totals div { display:flex; justify-content:space-between; margin:6px 0 }
 .hidden { display:none }
-.card {
-  position:fixed;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
-  background:#fff;
-  border:1px solid #ccc;
-  padding:20px;
-  z-index:9999;
-  width:400px;
-}
-.overlay {
-  position:fixed;
-  top:0;left:0;right:0;bottom:0;
-  background:rgba(0,0,0,.5);
-  z-index:9998;
-}
+.overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:999 }
+.card { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; padding:20px; z-index:1000; width:420px }
 </style>
 </head>
 
@@ -63,14 +46,14 @@ button { padding:8px 14px; margin-top:10px }
   <div>
     Invoice #: <input id="invoiceNumber"><br>
     Date: <span id="invoiceDate"></span><br>
-    <svg id="barcode" width="300" height="60"></svg>
+    <canvas id="barcode" width="300" height="60"></canvas>
   </div>
 </header>
 
 <hr>
 
 <h3>Customer</h3>
-<input id="customerName" placeholder="Customer Name" autocomplete="off" list="customerList">
+<input id="customerName" list="customerList" placeholder="Customer Name">
 <datalist id="customerList"></datalist>
 
 <h3>Invoice Items</h3>
@@ -78,8 +61,8 @@ button { padding:8px 14px; margin-top:10px }
 <table id="itemsTable">
 <thead>
 <tr>
-  <th>Product Name</th>
-  <th>Product Type</th>
+  <th>Product</th>
+  <th>Type</th>
   <th>Quantity</th>
   <th>Unit Price</th>
   <th>Total</th>
@@ -107,9 +90,9 @@ button { padding:8px 14px; margin-top:10px }
 
 </div>
 
-<!-- NEW CUSTOMER CARD -->
 <div id="overlay" class="overlay hidden"></div>
 
+<!-- NEW CUSTOMER CARD -->
 <div id="newCustomerCard" class="card hidden">
   <h3>New Customer</h3>
   <input id="ncName" placeholder="Customer Name">
@@ -125,49 +108,42 @@ button { padding:8px 14px; margin-top:10px }
   <button onclick="saveNewCustomer()">Save Customer</button>
 </div>
 
+<!-- NEW PRODUCT CARD -->
+<div id="newProductCard" class="card hidden">
+  <h3>New Product</h3>
+  <input id="npName" placeholder="Product Name">
+  <label><input type="checkbox" value="Case"> Case</label><br>
+  <label><input type="checkbox" value="Bottle"> Bottle</label><br>
+  <label><input type="checkbox" value="1/6 Keg"> 1/6 Keg</label><br>
+  <label><input type="checkbox" value="1/2 Keg"> 1/2 Keg</label><br><br>
+  <button onclick="saveNewProduct()">Save Product</button>
+</div>
+
 <script>
-const API = "https://script.google.com/macros/s/AKfycbys580shBiRLtAW0jAYFoinwKJrycSJQyW8qy95nvLr7dxqOGtzI3e_h9QQn8-ULTT3/exec";
+const API="https://script.google.com/macros/s/AKfycbys580shBiRLtAW0jAYFoinwKJrycSJQyW8qy95nvLr7dxqOGtzI3e_h9QQn8-ULTT3/exec";
+const types=["Case","Bottle","1/6 Keg","1/2 Keg"];
+let customers=[], products=[];
 
-const types = ["Case","Bottle","1/6 Keg","1/2 Keg"];
-let customers = [];
-let products = [];
+invoiceDate.innerText=new Date().toLocaleDateString();
 
-document.getElementById("invoiceDate").innerText =
-  new Date().toLocaleDateString();
-
-fetch(API+"?action=getNextInvoiceNumber")
-.then(r=>r.json())
-.then(d=>{
-  invoiceNumber.value = d.invoiceNumber;
-  renderBarcodeSafe(d.invoiceNumber);
+fetch(API+"?action=getNextInvoiceNumber").then(r=>r.json()).then(d=>{
+  invoiceNumber.value=d.invoiceNumber;
+  renderBarcode(d.invoiceNumber);
 });
 
-function renderBarcodeSafe(value) {
-  const svg = document.getElementById("barcode");
-  if (!svg) return;
-  svg.innerHTML = "";
-  setTimeout(() => {
-    JsBarcode(svg, String(value), {
-      format: "CODE128",
-      width: 2,
-      height: 40,
-      displayValue: false
-    });
-    svg.style.display="none";
-    svg.offsetHeight;
-    svg.style.display="block";
-  }, 150);
+function renderBarcode(val){
+  const c=document.getElementById("barcode");
+  const ctx=c.getContext("2d");
+  ctx.clearRect(0,0,c.width,c.height);
+  JsBarcode(c,String(val),{format:"CODE128",width:2,height:40,displayValue:false});
 }
 
-fetch(API+"?action=getCustomers")
-.then(r=>r.json())
-.then(d=>{
-  customers = d;
-  const dl = document.getElementById("customerList");
+fetch(API+"?action=getCustomers").then(r=>r.json()).then(d=>{
+  customers=d;
   d.forEach(c=>{
     const o=document.createElement("option");
     o.value=c.name;
-    dl.appendChild(o);
+    customerList.appendChild(o);
   });
 });
 
@@ -175,21 +151,18 @@ customerName.addEventListener("blur",()=>{
   if(customerName.value && !customers.find(c=>c.name===customerName.value)){
     overlay.classList.remove("hidden");
     newCustomerCard.classList.remove("hidden");
-    ncName.value = customerName.value;
+    ncName.value=customerName.value;
   }
 });
 
 function saveNewCustomer(){
-  fetch(API,{
-    method:"POST",
-    body:JSON.stringify({
-      action:"saveCustomer",
-      name:ncName.value,
-      address:ncAddress.value,
-      type:ncType.value,
-      payment:ncPayment.value
-    })
-  }).then(()=>{
+  fetch(API,{method:"POST",body:JSON.stringify({
+    action:"saveCustomer",
+    name:ncName.value,
+    address:ncAddress.value,
+    type:ncType.value,
+    payment:ncPayment.value
+  })}).then(()=>{
     overlay.classList.add("hidden");
     newCustomerCard.classList.add("hidden");
   });
@@ -197,78 +170,105 @@ function saveNewCustomer(){
 
 function addRow(){
   const tr=document.createElement("tr");
-
   const p=document.createElement("input");
-  p.setAttribute("list","productList");
   p.onblur=()=>checkNewProduct(p);
-
   const t=document.createElement("select");
   t.multiple=true;
   types.forEach(v=>t.add(new Option(v,v)));
-  t.onchange=()=>buildQty(q,t);
-
   const q=document.createElement("div");
-
-  const price=document.createElement("input");
-  price.type="number";
-  price.value=0;
-  price.oninput=calc;
-
-  const total=document.createElement("span");
-  total.innerText="$0.00";
-
-  tr.append(td(p),td(t),td(q),td(price),td(total));
+  t.onchange=()=>buildQty(q,t);
+  const pr=document.createElement("input");
+  pr.type="number"; pr.value=0; pr.oninput=calc;
+  const tot=document.createElement("span"); tot.innerText="$0.00";
+  tr.append(td(p),td(t),td(q),td(pr),td(tot));
   itemsTable.querySelector("tbody").append(tr);
 }
 
-function buildQty(container,select){
-  container.innerHTML="";
-  [...select.selectedOptions].forEach(o=>{
+function checkNewProduct(inp){
+  if(inp.value && !products.find(p=>p.name===inp.value)){
+    overlay.classList.remove("hidden");
+    newProductCard.classList.remove("hidden");
+    npName.value=inp.value;
+  }
+}
+
+function saveNewProduct(){
+  const t=[...document.querySelectorAll("#newProductCard input:checked")].map(i=>i.value);
+  fetch(API,{method:"POST",body:JSON.stringify({action:"saveProduct",name:npName.value,types:t})});
+  products.push({name:npName.value});
+  overlay.classList.add("hidden");
+  newProductCard.classList.add("hidden");
+}
+
+function buildQty(c,s){
+  c.innerHTML="";
+  [...s.selectedOptions].forEach(o=>{
     const i=document.createElement("input");
-    i.type="number";
-    i.value=1;
-    i.dataset.type=o.value;
-    i.oninput=calc;
-    container.append(o.value+" ",i,document.createElement("br"));
+    i.type="number"; i.value=1; i.dataset.type=o.value; i.oninput=calc;
+    c.append(o.value+" ",i,document.createElement("br"));
   });
 }
 
-function td(el){const d=document.createElement("td");d.append(el);return d;}
+function td(e){const d=document.createElement("td");d.append(e);return d}
 
 function calc(){
-  let subtotal=0, cases=0, keg=0;
+  let subtotal=0,cases=0,kegs=0;
   document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
-    const price=+r.children[3].firstChild.value;
-    let qty=0;
+    let q=0;
     r.children[2].querySelectorAll("input").forEach(i=>{
-      qty+=+i.value;
+      q+=+i.value;
       if(i.dataset.type==="Case") cases+=+i.value;
-      if(i.dataset.type.includes("Keg")) keg+=+i.value;
+      if(i.dataset.type.includes("Keg")) kegs+=+i.value;
     });
-    const line=price*qty;
-    r.children[4].innerText="$"+line.toFixed(2);
-    subtotal+=line;
+    const p=+r.children[3].firstChild.value;
+    const l=p*q;
+    r.children[4].innerText="$"+l.toFixed(2);
+    subtotal+=l;
   });
-  let discount = cases>10 ? subtotal*0.10 : 0;
-  let tax = subtotal*0.06;
-  let kegDep = keg*30;
-  document.getElementById("sub").innerText="$"+subtotal.toFixed(2);
-  document.getElementById("disc").innerText="$"+discount.toFixed(2);
-  document.getElementById("tax").innerText="$"+tax.toFixed(2);
-  document.getElementById("keg").innerText="$"+kegDep.toFixed(2);
-  document.getElementById("total").innerText="$"+(subtotal-discount+tax+kegDep).toFixed(2);
+  const discount=cases>10?subtotal*0.10:0;
+  const tax=subtotal*0.06;
+  const keg=kegs*30;
+  sub.innerText="$"+subtotal.toFixed(2);
+  disc.innerText="$"+discount.toFixed(2);
+  tax.innerText="$"+tax.toFixed(2);
+  keg.innerText="$"+keg.toFixed(2);
+  total.innerText="$"+(subtotal-discount+tax+keg).toFixed(2);
 }
 
 function generatePDF(){
-  const { jsPDF } = window.jspdf;
+  const {jsPDF}=window.jspdf;
   const d=new jsPDF();
-  d.text("Invoice "+invoiceNumber.value,14,20);
+  d.setFontSize(9);
+  d.text("Suburban Brewing Company",14,14);
+  d.text(`Invoice #: ${invoiceNumber.value}`,150,14);
+  d.text(`Date: ${invoiceDate.innerText}`,150,20);
+  d.text("Bill To:",14,30);
+  d.text(customerName.value,14,36);
+
+  const rows=[];
+  document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
+    rows.push([
+      r.children[0].firstChild.value,
+      [...r.children[1].firstChild.selectedOptions].map(o=>o.value).join(", "),
+      [...r.children[2].querySelectorAll("input")].map(i=>`${i.dataset.type}:${i.value}`).join(" "),
+      r.children[3].firstChild.value,
+      r.children[4].innerText
+    ]);
+  });
+
+  d.autoTable({startY:45,head:[["Product","Type","Qty","Price","Total"]],body:rows});
+  let y=d.lastAutoTable.finalY+10;
+  d.text(`Subtotal: ${sub.innerText}`,140,y);
+  d.text(`Discount: ${disc.innerText}`,140,y+6);
+  d.text(`Tax: ${tax.innerText}`,140,y+12);
+  d.text(`Keg Deposit: ${keg.innerText}`,140,y+18);
+  d.text(`Total: ${total.innerText}`,140,y+26);
+  d.text(paymentNote.innerText,14,y+36);
   d.save("invoice.pdf");
 }
 
-function saveInvoice(){}
-function emailInvoice(){}
-
+function saveInvoice(){ fetch(API,{method:"POST",body:JSON.stringify({action:"saveInvoice"})}); }
+function emailInvoice(){ fetch(API,{method:"POST",body:JSON.stringify({action:"emailInvoice"})}); }
 </script>
 </body>
 </html>
