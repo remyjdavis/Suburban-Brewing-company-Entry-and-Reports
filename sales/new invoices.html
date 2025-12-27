@@ -130,6 +130,7 @@ button { padding:8px 14px; margin-top:10px }
 <h3>Customer</h3>
 <input id="customerName" placeholder="Start typing customer…" list="customerList" autocomplete="off"
        oninput="filterCustomers(this.value)" onblur="checkNewCustomer(this.value)">
+  <input id="customerAddress" placeholder="Customer address" readonly>
 <datalist id="customerList"></datalist>
 
 <h3>Invoice Items</h3>
@@ -232,6 +233,8 @@ const SALES_TAX_RATE = 0.06;
 const KEG_DEPOSIT_RATE = 30;
 
 let customerListData = [];
+let customerMap = {}; // name → { address, type, payment }
+
 let productData = {};      // { IPA: { Case: 120 } }
 let productNames = [];    // ["IPA", "Lager"]
 
@@ -247,14 +250,25 @@ JsBarcode(
 fetch(API + "?action=getCustomers")
   .then(res => res.json())
   .then(data => {
-    customerListData = data.map(c => c.name);
+    customerListData = [];
+    customerMap = {};
     customerList.innerHTML = "";
-    customerListData.forEach(name => {
+
+    data.forEach(c => {
+      customerListData.push(c.name);
+
+      customerMap[c.name] = {
+        address: c.address,
+        type: c.type,       // Restaurant / Wholesaler
+        payment: c.payment  // Check / Fintech
+      };
+
       const opt = document.createElement("option");
-      opt.value = name;
+      opt.value = c.name;
       customerList.append(opt);
     });
   });
+
 fetch(API + "?action=getProducts")
   .then(r => r.json())
   .then(data => {
@@ -331,6 +345,17 @@ function confirmCustomer(){
 function closeCustomer(){
   customerModal.style.display="none";
 }
+  customerName.addEventListener("change", () => {
+  const customer = customerMap[customerName.value];
+  if (!customer) return;
+
+  // ✅ Visible
+  customerAddress.value = customer.address || "";
+
+  // ✅ Hidden logic
+  applyCustomerRules(customer);
+});
+
 function closeProduct() {
   document.getElementById("productModal").style.display = "none";
 }
@@ -553,7 +578,10 @@ function calc() {
 
   // Tax (after discount, before keg deposits)
   const taxableAmount = subtotal - discount;
-  const taxAmount = taxableAmount * SALES_TAX_RATE;
+ const taxAmount = taxEnabled
+  ? taxableAmount * SALES_TAX_RATE
+  : 0;
+
   tax.innerText = "$" + taxAmount.toFixed(2);
 
   // Keg Deposit
@@ -564,6 +592,18 @@ function calc() {
     taxableAmount + taxAmount + kegDeposit;
 
   total.innerText = "$" + grandTotal.toFixed(2);
+}
+let taxEnabled = true;
+
+function applyCustomerRules(customer) {
+  // Sales tax rule
+  taxEnabled = customer.type === "Restaurant";
+
+  // Payment note rule
+  updatePaymentNote(customer.payment);
+
+  // Recalculate totals
+  calc();
 }
 
 
