@@ -260,45 +260,36 @@ function closeProduct() {
 function handleTypeToggle(cb, container) {
   const row = cb.closest("tr");
   const product = row.children[0].querySelector("input").value;
+  const priceInput = row.children[3].querySelector("input");
 
   if (cb.checked) {
-    const line = document.createElement("div");
-    line.style.display = "flex";
-    line.style.gap = "6px";
-    line.style.marginBottom = "4px";
-
     const qty = document.createElement("input");
     qty.type = "number";
     qty.min = 1;
     qty.value = 1;
+    qty.dataset.type = cb.dataset.type;
     qty.style.width = "60px";
     qty.oninput = calc;
 
-    const price = document.createElement("input");
-    price.type = "number";
-    price.readOnly = true;
-    price.style.width = "80px";
-    price.style.background = "#f2f2f2";
+    container.appendChild(qty);
 
+    // ✅ SET UNIT PRICE BASED ON TYPE
     if (productData[product]?.[cb.dataset.type]) {
-      price.value = productData[product][cb.dataset.type];
+      priceInput.value = productData[product][cb.dataset.type];
     }
-
-    line.dataset.type = cb.dataset.type;
-    line.append(qty, price);
-    container.appendChild(line);
-
   } else {
     container
-      .querySelectorAll(`div[data-type="${cb.dataset.type}"]`)
+      .querySelectorAll(`input[data-type="${cb.dataset.type}"]`)
       .forEach(el => el.remove());
+
+    // clear price if no types left
+    if (!container.querySelector("input")) {
+      priceInput.value = "";
+    }
   }
 
   calc();
 }
-
-
-
 
 /* ITEMS */
 function addRow(){
