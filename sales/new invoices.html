@@ -21,12 +21,24 @@ th { background:#18b89a; color:#fff }
 input,select { width:100%; padding:6px }
 button { padding:8px 14px; margin-top:10px; margin-right:6px }
 .hidden { display:none }
-.card {
-  border:2px solid #18b89a;
-  padding:15px;
-  margin-top:10px;
-  background:#f9fffd;
+
+/* MODALS */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
 }
+.modal {
+  background: #fff;
+  padding: 20px;
+  width: 400px;
+  border-radius: 6px;
+}
+.modal h3 { margin-top: 0 }
 </style>
 </head>
 
@@ -55,32 +67,11 @@ button { padding:8px 14px; margin-top:10px; margin-right:6px }
 
 <hr>
 
-<!-- ================= CUSTOMER ================= -->
-
+<!-- CUSTOMER -->
 <h3>Customer</h3>
-<input id="customerName" list="customerList" placeholder="Start typing customer…" onblur="checkNewCustomer()">
-<datalist id="customerList"></datalist>
+<input id="customerName" placeholder="Start typing customer…" onblur="checkNewCustomerPrompt(this.value)">
 
-<div id="newCustomerCard" class="card hidden">
-  <h4>New Customer</h4>
-  <input id="newCustName" placeholder="Customer Name"><br><br>
-  <input id="newCustAddress" placeholder="Address"><br><br>
-  <select id="newCustType">
-    <option value="">Customer Type</option>
-    <option>Restaurant</option>
-    <option>Wholesaler</option>
-  </select><br><br>
-  <select id="newCustPayment">
-    <option value="">Payment Type</option>
-    <option>Check</option>
-    <option>ACH</option>
-    <option>Fintech</option>
-  </select><br><br>
-  <button onclick="saveNewCustomer()">Save Customer</button>
-</div>
-
-<!-- ================= ITEMS ================= -->
-
+<!-- ITEMS -->
 <h3>Invoice Items</h3>
 
 <table id="itemsTable">
@@ -89,7 +80,7 @@ button { padding:8px 14px; margin-top:10px; margin-right:6px }
   <th>Product</th>
   <th>Type</th>
   <th>Quantity</th>
-  <th>Price</th>
+  <th>Unit Price</th>
   <th>Total</th>
 </tr>
 </thead>
@@ -97,29 +88,6 @@ button { padding:8px 14px; margin-top:10px; margin-right:6px }
 </table>
 
 <button onclick="addRow()">Add Item</button>
-
-<!-- ================= NEW PRODUCT CARD ================= -->
-
-<div id="newProductCard" class="card hidden">
-  <h4>New Product</h4>
-  <input id="newProdName" placeholder="Product Name"><br><br>
-
-  <div>
-    <label><input type="checkbox" value="Case"> Case</label>
-    <input data-type="Case" type="number" placeholder="Price"><br>
-
-    <label><input type="checkbox" value="Bottle"> Bottle</label>
-    <input data-type="Bottle" type="number" placeholder="Price"><br>
-
-    <label><input type="checkbox" value="1/6 Keg"> 1/6 Keg</label>
-    <input data-type="1/6 Keg" type="number" placeholder="Price"><br>
-
-    <label><input type="checkbox" value="1/2 Keg"> 1/2 Keg</label>
-    <input data-type="1/2 Keg" type="number" placeholder="Price"><br>
-  </div><br>
-
-  <button onclick="saveNewProduct()">Save Product</button>
-</div>
 
 <hr>
 
@@ -131,11 +99,52 @@ button { padding:8px 14px; margin-top:10px; margin-right:6px }
 
 </div>
 
+<!-- ================= CUSTOMER MODAL ================= -->
+<div id="customerModal" class="modal-overlay">
+  <div class="modal">
+    <h3>New Customer</h3>
+    <input id="mcName" placeholder="Customer Name"><br><br>
+    <input id="mcAddress" placeholder="Address"><br><br>
+    <select id="mcType">
+      <option value="">Customer Type</option>
+      <option>Restaurant</option>
+      <option>Wholesaler</option>
+    </select><br><br>
+    <select id="mcPayment">
+      <option value="">Payment Type</option>
+      <option>Check</option>
+      <option>ACH</option>
+      <option>Fintech</option>
+    </select><br><br>
+    <button onclick="confirmNewCustomer()">Save</button>
+    <button onclick="closeCustomerModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- ================= PRODUCT MODAL ================= -->
+<div id="productModal" class="modal-overlay">
+  <div class="modal">
+    <h3>New Product</h3>
+    <input id="mpName" placeholder="Product Name"><br><br>
+    <label>Case Price</label>
+    <input id="pCase" type="number"><br><br>
+    <label>Bottle Price</label>
+    <input id="pBottle" type="number"><br><br>
+    <label>1/6 Keg Price</label>
+    <input id="pSixth" type="number"><br><br>
+    <label>1/2 Keg Price</label>
+    <input id="pHalf" type="number"><br><br>
+    <button onclick="confirmNewProduct()">Save</button>
+    <button onclick="closeProductModal()">Cancel</button>
+  </div>
+</div>
+
 <script>
 /* ================= BASE ================= */
 document.getElementById("invoiceDate").innerText = new Date().toLocaleDateString();
 
 function refreshBarcode(){
+  if(!invoiceNumber.value) return;
   JsBarcode("#barcodeCanvas", invoiceNumber.value, {
     format:"CODE128", width:2, height:50, displayValue:false
   });
@@ -143,42 +152,57 @@ function refreshBarcode(){
 refreshBarcode();
 
 /* ================= DATA ================= */
-let customers = [];
-let products = [];
+let customerNames = [];
+let productNames = [];
+const types = ["Case","Bottle","1/6 Keg","1/2 Keg"];
 
-/* ================= CUSTOMER LOGIC ================= */
-function checkNewCustomer(){
-  const val = customerName.value.trim();
+/* ================= CUSTOMER PROMPT ================= */
+function checkNewCustomerPrompt(val){
   if (!val) return;
-  if (!customers.includes(val)){
-    newCustomerCard.classList.remove("hidden");
-    newCustName.value = val;
+  if (!customerNames.includes(val)){
+    mcName.value = val;
+    customerModal.style.display = "flex";
   }
 }
-
-function saveNewCustomer(){
-  customers.push(newCustName.value);
-  const opt = document.createElement("option");
-  opt.value = newCustName.value;
-  customerList.append(opt);
-  customerName.value = newCustName.value;
-  newCustomerCard.classList.add("hidden");
+function confirmNewCustomer(){
+  customerNames.push(mcName.value);
+  customerName.value = mcName.value;
+  closeCustomerModal();
+}
+function closeCustomerModal(){
+  customerModal.style.display = "none";
 }
 
-/* ================= PRODUCT LOGIC ================= */
+/* ================= PRODUCT PROMPT ================= */
+function checkNewProductPrompt(val){
+  if (!val) return;
+  if (!productNames.includes(val)){
+    mpName.value = val;
+    productModal.style.display = "flex";
+  }
+}
+function confirmNewProduct(){
+  productNames.push(mpName.value);
+  closeProductModal();
+}
+function closeProductModal(){
+  productModal.style.display = "none";
+}
+
+/* ================= ITEMS ================= */
 function addRow(){
   const tr = document.createElement("tr");
 
   const p = document.createElement("input");
   p.placeholder="Product";
-  p.onblur=()=>checkNewProduct(p);
+  p.onblur = () => checkNewProductPrompt(p.value);
 
   const t = document.createElement("select");
-  t.multiple=true;
-  ["Case","Bottle","1/6 Keg","1/2 Keg"].forEach(v=>t.add(new Option(v,v)));
+  t.multiple = true;
+  types.forEach(v=>t.add(new Option(v,v)));
 
   const q = document.createElement("div");
-  t.onchange=()=>buildQty(q,t);
+  t.onchange = () => buildQty(q,t);
 
   const price = document.createElement("input");
   price.type="number"; price.value=0; price.oninput=calc;
@@ -190,34 +214,33 @@ function addRow(){
   itemsTable.querySelector("tbody").append(tr);
 }
 
-function checkNewProduct(input){
-  if (!products.includes(input.value)){
-    newProductCard.classList.remove("hidden");
-    newProdName.value=input.value;
-  }
-}
-
-function saveNewProduct(){
-  products.push(newProdName.value);
-  newProductCard.classList.add("hidden");
-}
-
-/* ================= SHARED ================= */
-function buildQty(c,s){
-  c.innerHTML="";
-  [...s.selectedOptions].forEach(o=>{
+function buildQty(container,select){
+  container.innerHTML="";
+  [...select.selectedOptions].forEach(o=>{
     const i=document.createElement("input");
     i.type="number"; i.value=1; i.oninput=calc;
-    c.append(o.value+" ",i,document.createElement("br"));
+    container.append(o.value+" ",i,document.createElement("br"));
   });
 }
-function td(e){const d=document.createElement("td");d.append(e);return d;}
-function calc(){}
+
+function td(el){const d=document.createElement("td");d.append(el);return d;}
+
+function calc(){
+  let subtotal=0;
+  document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
+    const price=+r.children[3].firstChild.value;
+    let qty=0;
+    r.children[2].querySelectorAll("input").forEach(i=>qty+=+i.value);
+    const line=price*qty;
+    r.children[4].innerText="$"+line.toFixed(2);
+    subtotal+=line;
+  });
+}
 
 /* ================= PLACEHOLDERS ================= */
-function generatePDF(){}
-function saveInvoice(){}
-function emailInvoice(){}
+function generatePDF(){ alert("PDF logic already wired"); }
+function saveInvoice(){ alert("Save logic already wired"); }
+function emailInvoice(){ alert("Email logic already wired"); }
 </script>
 
 </body>
