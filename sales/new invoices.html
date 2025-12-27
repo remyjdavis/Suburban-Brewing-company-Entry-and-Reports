@@ -75,6 +75,7 @@ button { padding:8px 14px; margin-top:10px }
 </table>
 
 <button onclick="addRow()">Add Item</button>
+<datalist id="productList"></datalist>
 
 <div class="totals">
   <div><span>Subtotal</span><span id="sub">$0.00</span></div>
@@ -159,8 +160,9 @@ const SALES_TAX_RATE = 0.06;
 const KEG_DEPOSIT = 30;
 
 let customerListData = [];
-let productData = {}; 
-// { "IPA": { "Case": 120, "Bottle": 6 } }
+let productData = {};      // { IPA: { Case: 120 } }
+let productNames = [];    // ["IPA", "Lager"]
+
 
 document.getElementById("invoiceDate").innerText = new Date().toLocaleDateString();
 JsBarcode("#barcodeCanvas", invoiceNumber.value, { displayValue:false });
@@ -181,11 +183,23 @@ fetch(API + "?action=getProducts")
   .then(r => r.json())
   .then(data => {
     productData = {};
+    productNames = [];
+
     data.forEach(p => {
       if (!productData[p.product]) {
         productData[p.product] = {};
+        productNames.push(p.product);
       }
       productData[p.product][p.type] = Number(p.price);
+    });
+
+    // populate datalist
+    const dl = document.getElementById("productList");
+    dl.innerHTML = "";
+    productNames.forEach(name => {
+      const opt = document.createElement("option");
+      opt.value = name;
+      dl.appendChild(opt);
     });
   });
 
