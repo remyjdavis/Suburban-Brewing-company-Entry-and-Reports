@@ -5,25 +5,34 @@
 <title>New Invoice | Suburban Brewing Company</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
+<!-- jsPDF + AutoTable -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
 <style>
-body{font-family:Arial;background:#f4f4f4;padding:20px}
-.container{background:#fff;padding:20px;max-width:1100px;margin:auto}
-header{display:flex;justify-content:space-between}
-.company{display:flex}
-.company img{width:80px;margin-right:15px}
-table{width:100%;border-collapse:collapse;margin-top:15px}
-th,td{border:1px solid #ccc;padding:6px}
-th{background:#18b89a;color:#fff}
-input,select{width:100%;padding:5px}
-button{padding:8px 14px;margin-top:10px}
-.totals{max-width:300px;margin-left:auto;margin-top:20px}
-.totals div{display:flex;justify-content:space-between}
-.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
-.card{background:#fff;padding:20px;width:320px}
+body { font-family: Arial, sans-serif; background:#f4f4f4; margin:0; padding:20px }
+.container { background:#fff; padding:20px; max-width:1100px; margin:auto }
+
+header { display:flex; justify-content:space-between; align-items:flex-start }
+.company { display:flex; align-items:flex-start }
+
+header img {
+  width: 80px;
+  height: auto;
+  object-fit: contain;
+  margin-right: 15px;
+}
+
+table { width:100%; border-collapse:collapse; margin-top:15px }
+th,td { border:1px solid #ccc; padding:8px; text-align:left }
+th { background:#18b89a; color:#fff }
+
+input,select { width:100%; padding:6px }
+button { padding:8px 14px; margin-top:10px }
+
+.totals { max-width:300px; margin-left:auto; margin-top:20px }
+.totals div { display:flex; justify-content:space-between; margin:6px 0 }
 </style>
 </head>
 
@@ -37,12 +46,13 @@ button{padding:8px 14px;margin-top:10px}
       <strong>Suburban Brewing Company</strong><br>
       3041 Horseshoe Pike Suite 120 & 130<br>
       Honey Brook, PA 19344<br>
-      Sales Rep: Remy Davis | 908-642-1019<br>
-      Remyjdavis90@gmail.com
+      Sales Rep: Remy Davis | Phone: 9086421019<br>
+      Email: Remyjdavis90@gmail.com
     </div>
   </div>
+
   <div>
-    Invoice #: <input id="invoiceNumber" value=""><br>
+    Invoice #: <input id="invoiceNumber" value="INV-1001"><br>
     Date: <span id="invoiceDate"></span><br>
     <svg id="barcode"></svg>
   </div>
@@ -51,13 +61,20 @@ button{padding:8px 14px;margin-top:10px}
 <hr>
 
 <h3>Customer</h3>
-<input id="customerName" placeholder="Start typing customer name">
+<input id="customerName" placeholder="Customer Name">
 <input id="customerAddress" placeholder="Customer Address">
 
 <h3>Invoice Items</h3>
-<table id="items">
+
+<table id="itemsTable">
 <thead>
-<tr><th>Product</th><th>Type</th><th>Qty</th><th>Price</th><th>Total</th></tr>
+<tr>
+  <th>Product Name</th>
+  <th>Product Type</th>
+  <th>Quantity</th>
+  <th>Unit Price</th>
+  <th>Total</th>
+</tr>
 </thead>
 <tbody></tbody>
 </table>
@@ -67,153 +84,131 @@ button{padding:8px 14px;margin-top:10px}
 <div class="totals">
   <div><span>Subtotal</span><span id="sub">$0.00</span></div>
   <div><span>Discount</span><span id="disc">$0.00</span></div>
-  <div><span>Sales Tax</span><span id="tax">$0.00</span></div>
+  <div><span>Sales Tax (6%)</span><span id="tax">$0.00</span></div>
   <div><span>Keg Deposit</span><span id="keg">$0.00</span></div>
   <hr>
   <div><strong>Total</strong><strong id="total">$0.00</strong></div>
 </div>
 
-<button onclick="submitInvoice()">Print / Send Invoice</button>
-<p id="paymentNote"></p>
+<button onclick="generatePDF()">Print Invoice</button>
 
-</div>
+<p id="paymentNote">Make checks payable to Suburban Brewing Company.</p>
 
-<!-- MODALS -->
-<div id="customerModal" class="modal">
-  <div class="card">
-    <h3>New Customer</h3>
-    <select id="custType">
-      <option value="restaurant">Restaurant</option>
-      <option value="wholesaler">Wholesaler</option>
-    </select>
-    <select id="custPayment">
-      <option value="check">Check</option>
-      <option value="fintech">Fintech</option>
-    </select>
-    <button onclick="closeCustomerModal()">Save</button>
-  </div>
-</div>
-
-<div id="productModal" class="modal">
-  <div class="card">
-    <h3>New Product</h3>
-    <input id="newProductType" placeholder="Type (Case / Keg)">
-    <input id="newProductPrice" type="number" placeholder="Price">
-    <button onclick="closeProductModal()">Save</button>
-  </div>
 </div>
 
 <script>
-const API = "https://script.google.com/macros/s/AKfycbys580shBiRLtAW0jAYFoinwKJrycSJQyW8qy95nvLr7dxqOGtzI3e_h9QQn8-ULTT3/exec";
-const CC_EMAILS = [
-  "eric@suburbanbg.com",
-  "lambertj9@gmail.com",
-  "cassandra.reeser@gmail.com"
-];
+const products = ["Beer A","Beer B","Beer C"];
+const types = ["Case","Bottle","1/6 Keg","1/2 Keg"];
 
-let customers=[],products=[],pendingProduct=null;
-document.getElementById("invoiceDate").innerText=new Date().toLocaleDateString();
+document.getElementById("invoiceDate").innerText =
+  new Date().toLocaleDateString();
 
-fetch(`${API}?action=customers`).then(r=>r.json()).then(d=>customers=d);
-fetch(`${API}?action=products`).then(r=>r.json()).then(d=>products=d);
+function renderBarcode() {
+  JsBarcode("#barcode", document.getElementById("invoiceNumber").value, {
+    width: 1.5,
+    height: 40,
+    displayValue: false
+  });
+}
+renderBarcode();
+
+document.getElementById("invoiceNumber").addEventListener("input", renderBarcode);
 
 function addRow(){
-  const tr=document.createElement("tr");
-  const p=document.createElement("input");
-  p.onblur=()=>checkProduct(p);
-  const t=document.createElement("input");
-  const q=document.createElement("input"); q.type="number"; q.value=1; q.oninput=calc;
-  const pr=document.createElement("input"); pr.type="number"; pr.value=0; pr.oninput=calc;
-  const tot=document.createElement("span"); tot.innerText="$0.00";
-  tr.append(td(p),td(t),td(q),td(pr),td(tot));
-  document.querySelector("#items tbody").append(tr);
+  const tr = document.createElement("tr");
+
+  const p = document.createElement("select");
+  products.forEach(v=>p.add(new Option(v,v)));
+
+  const t = document.createElement("select");
+  t.multiple = true;
+  types.forEach(v=>t.add(new Option(v,v)));
+  t.onchange = ()=>buildQty(q,t);
+
+  const q = document.createElement("div");
+
+  const price = document.createElement("input");
+  price.type="number"; price.value=0; price.oninput=calc;
+
+  const total = document.createElement("span");
+  total.innerText="$0.00";
+
+  tr.append(td(p), td(t), td(q), td(price), td(total));
+  document.querySelector("#itemsTable tbody").append(tr);
 }
 
-function checkProduct(i){
-  if(!products.find(p=>p.product===i.value)){
-    pendingProduct=i;
-    document.getElementById("productModal").style.display="flex";
-  }
+function buildQty(container,select){
+  container.innerHTML="";
+  [...select.selectedOptions].forEach(o=>{
+    const i=document.createElement("input");
+    i.type="number"; i.value=1; i.dataset.type=o.value;
+    i.oninput=calc;
+    container.append(o.value+" ",i,document.createElement("br"));
+  });
 }
 
-function closeProductModal(){
-  const type=document.getElementById("newProductType").value;
-  const price=document.getElementById("newProductPrice").value;
-  pendingProduct.parentElement.nextSibling.firstChild.value=type;
-  pendingProduct.parentElement.nextSibling.nextSibling.nextSibling.firstChild.value=price;
-  document.getElementById("productModal").style.display="none";
-}
-
-function td(el){const d=document.createElement("td");d.append(el);return d}
+function td(el){ const d=document.createElement("td"); d.append(el); return d }
 
 function calc(){
-  let sub=0,cases=0,kegs=0;
-  document.querySelectorAll("#items tbody tr").forEach(r=>{
-    const qty=+r.children[2].firstChild.value;
-    const price=+r.children[3].firstChild.value;
-    const type=r.children[1].firstChild.value.toLowerCase();
-    if(type.includes("case")) cases+=qty;
-    if(type.includes("keg")) kegs+=qty;
-    const line=qty*price;
+  let subtotal=0;
+  document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
+    const price=r.children[3].firstChild.value;
+    let qty=0;
+    r.children[2].querySelectorAll("input").forEach(i=>qty+=+i.value);
+    const line=price*qty;
     r.children[4].innerText="$"+line.toFixed(2);
-    sub+=line;
+    subtotal+=line;
   });
 
-  const disc=cases>10?sub*.10:0;
-  const cust=customers.find(c=>c.name===customerName.value);
-  const tax=cust && cust.type==="restaurant"?(sub-disc)*.06:0;
-  const keg=kegs*30;
-  const total=sub-disc+tax+keg;
-
-  subEl(sub,"sub");
-  subEl(disc,"disc");
-  subEl(tax,"tax");
-  subEl(keg,"keg");
-  subEl(total,"total");
-
-  paymentNote.innerText=cust&&cust.payment==="fintech"
-    ?"Paid through Fintech"
-    :"Make checks payable to Suburban Brewing Company";
+  const tax=subtotal*0.06;
+  document.getElementById("sub").innerText="$"+subtotal.toFixed(2);
+  document.getElementById("tax").innerText="$"+tax.toFixed(2);
+  document.getElementById("total").innerText="$"+(subtotal+tax).toFixed(2);
 }
 
-function subEl(v,id){document.getElementById(id).innerText="$"+v.toFixed(2)}
-
-async function submitInvoice(){
+function generatePDF(){
   const { jsPDF } = window.jspdf;
-  const pdf=new jsPDF();
-  pdf.text("Suburban Brewing Company",14,15);
-  pdf.text(customerName.value,14,25);
-  const pdfBase64=btoa(pdf.output());
+  const d = new jsPDF();
 
-  const cust=customers.find(c=>c.name===customerName.value)||{
-    name:customerName.value,
-    address:customerAddress.value,
-    type:document.getElementById("custType")?.value||"restaurant",
-    payment:document.getElementById("custPayment")?.value||"check"
-  };
+  const img = new Image();
+  img.src = "background.jpg";
+  d.addImage(img,"PNG",14,10,30,0);
 
-  const items=[];
-  document.querySelectorAll("#items tbody tr").forEach(r=>{
-    items.push({
-      product:r.children[0].firstChild.value,
-      type:r.children[1].firstChild.value,
-      qty:+r.children[2].firstChild.value,
-      price:+r.children[3].firstChild.value
-    });
+  const barcodeSVG = document.getElementById("barcode").outerHTML;
+  d.addSvgAsImage(barcodeSVG, 140, 28, 50, 15);
+
+  d.text("Suburban Brewing Company",50,16);
+  d.text("3041 Horseshoe Pike Suite 120 & 130",50,22);
+  d.text("Honey Brook, PA 19344",50,28);
+
+  d.text(`Invoice #: ${invoiceNumber.value}`,140,16);
+  d.text(`Date: ${invoiceDate.innerText}`,140,22);
+
+  d.text("Bill To:",14,40);
+  d.text(customerName.value,14,46);
+  d.text(customerAddress.value,14,52);
+
+  const rows=[];
+  document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
+    rows.push([
+      r.children[0].firstChild.value,
+      [...r.children[1].firstChild.selectedOptions].map(o=>o.value).join(", "),
+      [...r.children[2].querySelectorAll("input")].map(i=>`${i.dataset.type}:${i.value}`).join(" "),
+      r.children[3].firstChild.value,
+      r.children[4].innerText
+    ]);
   });
 
-  const payload={
-    customer:cust,
-    items,
-    subtotal:parseFloat(sub.innerText.slice(1)),
-    totalCases:items.reduce((a,i)=>i.type.toLowerCase().includes("case")?a+i.qty:a,0),
-    kegs:items.reduce((a,i)=>i.type.toLowerCase().includes("keg")?a+i.qty:a,0),
-    pdfBase64,
-    cc:CC_EMAILS
-  };
+  d.autoTable({
+    startY:60,
+    head:[["Product","Type","Qty","Price","Total"]],
+    body:rows
+  });
 
-  await fetch(API,{method:"POST",body:JSON.stringify(payload)});
-  alert("Invoice Created & Sent");
+  d.text(`Total: ${total.innerText}`,140,d.lastAutoTable.finalY+10);
+  d.text(paymentNote.innerText,14,d.lastAutoTable.finalY+20);
+
+  d.save("invoice.pdf");
 }
 </script>
 </body>
