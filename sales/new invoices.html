@@ -237,7 +237,11 @@ let productNames = [];    // ["IPA", "Lager"]
 
 
 document.getElementById("invoiceDate").innerText = new Date().toLocaleDateString();
-JsBarcode("#barcodeCanvas", invoiceNumber.value, { displayValue:false });
+JsBarcode(
+  "#barcodeCanvas",
+  document.getElementById("invoiceNumber").value,
+  { displayValue: false }
+);
 
 /* LOAD CUSTOMERS */
 fetch(API + "?action=getCustomers")
@@ -496,6 +500,7 @@ closeProduct();
 function calc() {
   let subtotal = 0;
   let kegDeposit = 0;
+  let totalCases = 0;
 
   document.querySelectorAll("#itemsTable tbody tr").forEach(row => {
     const qtyCol = row.children[2];
@@ -504,34 +509,60 @@ function calc() {
 
     qtyCol.querySelectorAll("input").forEach(qty => {
       const type = qty.dataset.type;
-      const price = Number(
-        priceCol.querySelector(`[data-type="${type}"]`)?.value || 0
-      );
+      const quantity = Number(qty.value || 0);
 
-      const lineTotal = qty.value * price;
+      const priceInput = priceCol.querySelector(
+        `[data-type="${type}"]`
+      );
+      const price = Number(priceInput?.value || 0);
+
+      const lineTotal = quantity * price;
       subtotal += lineTotal;
 
-      if (type.includes("Keg")) {
-        kegDeposit += qty.value * KEG_DEPOSIT_RATE;
+      // ✅ Count CASES only
+      if (type === "Case") {
+        totalCases += quantity;
       }
 
-      const totalDiv = totalCol.querySelector(`[data-type="${type}"]`);
+      // ✅ Keg deposit
+      if (type.includes("Keg")) {
+        kegDeposit += quantity * KEG_DEPOSIT_RATE;
+      }
+
+      // Line total display
+      const totalDiv = totalCol.querySelector(
+        `[data-type="${type}"]`
+      );
       if (totalDiv) {
         totalDiv.innerText = "$" + lineTotal.toFixed(2);
       }
     });
   });
 
+  // Subtotal
   sub.innerText = "$" + subtotal.toFixed(2);
-keg.innerText = "$" + kegDeposit.toFixed(2);
 
-const taxAmount = subtotal * SALES_TAX_RATE;
-tax.innerText = "$" + taxAmount.toFixed(2);
+  // ✅ Discount: 10% when 10+ cases
+  let discount = 0;
+  if (totalCases >= 10) {
+    discount = subtotal * 0.10;
+  }
+  disc.innerText = "$" + discount.toFixed(2);
 
-const grandTotal = subtotal + taxAmount + kegDeposit;
-total.innerText = "$" + grandTotal.toFixed(2);
+  // Tax (after discount)
+  const taxAmount = (subtotal - discount) * SALES_TAX_RATE;
+  tax.innerText = "$" + taxAmount.toFixed(2);
 
+  // Keg Deposit
+  keg.innerText = "$" + kegDeposit.toFixed(2);
+
+  // Grand Total
+  const grandTotal =
+    subtotal - discount + taxAmount + kegDeposit;
+
+  total.innerText = "$" + grandTotal.toFixed(2);
 }
+
 
 /* FIX #2 — SAVE INVOICE */
 async function saveInvoice() {
