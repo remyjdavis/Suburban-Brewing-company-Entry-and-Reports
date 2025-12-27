@@ -262,69 +262,103 @@
 
         <div class="actions">
           <button onclick="loadInvoice()">Load Invoice</button>
-          <button class="secondary" onclick="window.location.href='new%20invoices.html'">Create New Invoice</button>
+          <button class="secondary" onclick="window.location.href='new-invoice.html'">Create New Invoice</button>
         </div>
       </div>
+<div class="section">
+  <h2>Invoice History</h2>
 
-      <!-- LINE ITEMS -->
-      <div class="section">
-        <h2>Invoice Items</h2>
+  <input
+    id="search"
+    placeholder="Search invoice #, customer, date"
+    style="max-width:300px;margin-bottom:12px"
+    oninput="filterInvoices()"
+  >
 
-        <table>
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Qty</th>
-              <th>Unit Price</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody id="itemsBody">
-            <tr>
-              <td><input placeholder="Product name"></td>
-              <td><input type="number" min="0"></td>
-              <td><input type="number" min="0" step="0.01"></td>
-              <td>$0.00</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div class="empty-note">
-          Add products to calculate invoice totals.
-        </div>
-
-        <div class="actions">
-          <button onclick="addRow()">Add Item</button>
-          <button class="secondary">Save Invoice</button>
-        </div>
-      </div>
-
-    </section>
-  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Invoice #</th>
+        <th>Customer</th>
+        <th>Date</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody id="invoiceTable"></tbody>
+  </table>
 </div>
 
+</section>
 <script>
-  document.getElementById("invoiceDate").value =
-    new Date().toISOString().split("T")[0];
+function loadInvoice() {
+  const invoice = document.getElementById("invoiceNumber").value.trim();
 
-  function addRow() {
-    const row = `
-      <tr>
-        <td><input placeholder="Product name"></td>
-        <td><input type="number" min="0"></td>
-        <td><input type="number" min="0" step="0.01"></td>
-        <td>$0.00</td>
-      </tr>`;
-    document.getElementById("itemsBody").insertAdjacentHTML("beforeend", row);
+  if (!invoice) {
+    alert("Please enter an invoice number");
+    return;
   }
 
-  function createInvoice() {
-    alert("New invoice initialized. Backend connection coming next.");
-  }
-
-  function loadInvoice() {
-    alert("Invoice loading will connect to Google Sheets backend.");
-  }
+  window.location.href =
+    `new-invoice.html?invoice=${encodeURIComponent(invoice)}`;
+}
 </script>
+
+      <script>
+const API =
+  "https://script.google.com/macros/s/AKfycbys580shBiRLtAW0jAYFoinwKJrycSJQyW8qy95nvLr7dxqOGtzI3e_h9QQn8-ULTT3/exec";
+
+let invoices = [];
+
+// Load invoice list
+fetch(API + "?action=getInvoices")
+  .then(r => r.json())
+  .then(data => {
+  invoices = Array.isArray(data) ? data : [];
+  renderInvoices(invoices);
+})
+.catch(err => {
+  console.error(err);
+  document.getElementById("invoiceTable").innerHTML =
+    "<tr><td colspan='4'>Failed to load invoices</td></tr>";
+});
+
+function renderInvoices(list) {
+  const tbody = document.getElementById("invoiceTable");
+  tbody.innerHTML = "";
+
+  list.forEach(inv => {
+    const tr = document.createElement("tr");
+    tr.style.cursor = "pointer";
+    tr.onclick = () => openInvoice(inv.invoice);
+
+    tr.innerHTML = `
+      <td>${inv.invoice}</td>
+      <td>${inv.customer}</td>
+      <td>${inv.date}</td>
+      <td>$${Number(inv.total).toFixed(2)}</td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+}
+
+function filterInvoices() {
+  const q = document.getElementById("search").value.toLowerCase();
+
+  const filtered = invoices.filter(i =>
+    i.invoice.toLowerCase().includes(q) ||
+    i.customer.toLowerCase().includes(q) ||
+    i.date.toLowerCase().includes(q)
+  );
+
+  renderInvoices(filtered);
+}
+
+function openInvoice(invoiceNumber) {
+  window.location.href =
+    `new-invoice.html?invoice=${encodeURIComponent(invoiceNumber)}`;
+}
+</script>
+
 </body>
 </html>
