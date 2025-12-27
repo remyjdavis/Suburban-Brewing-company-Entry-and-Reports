@@ -78,6 +78,7 @@ button { padding:8px 14px; margin-top:10px }
   display: flex;
   align-items: center;
   height: 28px;
+  gap: 6px;
 }
 
 .qty-container .type-line {
@@ -472,10 +473,19 @@ function confirmProduct() {
     }
 
     productsToSave.forEach(p => {
-      productData[p.product][p.type] = p.price;
-    });
+  productData[p.product][p.type] = p.price;
+});
 
-    closeProduct();
+// 🔁 refresh any rows using this product
+document.querySelectorAll("#itemsTable tbody tr").forEach(row => {
+  const input = row.children[0].querySelector("input");
+  if (input.value === product) {
+    refreshPricesForRow(row);
+  }
+});
+
+closeProduct();
+
   })
   .catch(err => {
     console.error(err);
@@ -512,13 +522,15 @@ function calc() {
     });
   });
 
-  keg.innerText = "$" + kegDeposit.toFixed(2);
+  sub.innerText = "$" + subtotal.toFixed(2);
+keg.innerText = "$" + kegDeposit.toFixed(2);
 
-  const taxAmount = subtotal * SALES_TAX_RATE;
-  tax.innerText = "$" + taxAmount.toFixed(2);
+const taxAmount = subtotal * SALES_TAX_RATE;
+tax.innerText = "$" + taxAmount.toFixed(2);
 
-  const grandTotal = subtotal + taxAmount + kegDeposit;
-  total.innerText = "$" + grandTotal.toFixed(2);
+const grandTotal = subtotal + taxAmount + kegDeposit;
+total.innerText = "$" + grandTotal.toFixed(2);
+
 }
 
 /* FIX #2 — SAVE INVOICE */
