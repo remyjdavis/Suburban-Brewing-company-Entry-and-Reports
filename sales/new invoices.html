@@ -130,11 +130,16 @@ const API = "https://script.google.com/macros/s/AKfycbys580shBiRLtAW0jAYFoinwKJr
  **********************/
 document.getElementById("invoiceDate").innerText =
   new Date().toLocaleDateString();
-
 fetch(API+"?action=getNextInvoiceNumber")
 .then(r=>r.json()).then(d=>{
   invoiceNumber.value=d.invoiceNumber;
-  JsBarcode("#barcode", d.invoiceNumber, {height:40, displayValue:false});
+
+  setTimeout(()=>{
+    JsBarcode("#barcode", d.invoiceNumber, {
+      height:40,
+      displayValue:false
+    });
+  }, 50);
 });
 
 let customers = [];
