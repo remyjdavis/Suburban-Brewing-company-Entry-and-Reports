@@ -168,6 +168,7 @@ button { padding:8px 14px; margin-top:10px }
 <button onclick="generatePDF()">Print</button>
 <button onclick="saveInvoice()">Save</button>
 <button onclick="emailInvoice()">Email</button>
+<button onclick="goBack()">Back</button>
 
 <p id="paymentNote">Make checks payable to Suburban Brewing Company.</p>
 </div>
@@ -662,51 +663,44 @@ async function saveInvoice() {
 }
 
 
-function generatePDF() {
+async function generatePDF() {
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF("p", "mm", "letter");
+  const doc = new jsPDF();
 
-  let y = 15;
+  // LOGO
+  const logo = await loadImageAsBase64("background.jpg");
+  doc.addImage(logo, "PNG", 14, 10, 30, 30);
 
-  /* ===== HEADER ===== */
+  // HEADER TEXT
   doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.text("Suburban Brewing Company", 15, y);
-
+  doc.text("Suburban Brewing Company", 50, 16);
   doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.text("3041 Horseshoe Pike Suite 120 & 130", 15, y + 5);
-  doc.text("Honey Brook, PA 19344", 15, y + 10);
-  doc.text("Sales Rep: Remy Davis | 908-642-1019", 15, y + 15);
-  doc.text("Remyjdavis90@gmail.com", 15, y + 20);
+  doc.text(
+    [
+      "3041 Horseshoe Pike Suite 120 & 130",
+      "Honey Brook, PA 19344",
+      "Sales Rep: Remy Davis",
+      "Phone: 9086421019",
+      "Email: Remyjdavis90@gmail.com"
+    ],
+    50,
+    22
+  );
 
-  /* RIGHT HEADER */
-  doc.setFontSize(9);
-  doc.text(`Invoice #: ${invoiceNumber.value}`, 150, y);
-  doc.text(`Date: ${invoiceDate.innerText}`, 150, y + 6);
-
-  /* BARCODE IMAGE */
-  const barcodeCanvas = document.getElementById("barcodeCanvas");
-  const barcodeImg = barcodeCanvas.toDataURL("image/png");
-  doc.addImage(barcodeImg, "PNG", 150, y + 10, 45, 18);
-
-  y += 35;
-  doc.line(15, y, 195, y);
-  y += 8;
-
-  /* ===== CUSTOMER ===== */
+  // INVOICE META
   doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.text("Customer", 15, y);
+  doc.text(`Invoice #: ${invoiceNumber.value}`, 150, 16);
+  doc.text(`Date: ${invoiceDate.innerText}`, 150, 22);
 
-  doc.setFont("helvetica", "normal");
-  doc.text(customerName.value, 15, y + 6);
-  doc.text(customerAddress.value, 15, y + 11);
+  // CUSTOMER
+  doc.setFontSize(11);
+  doc.text("Bill To:", 14, 50);
+  doc.setFontSize(10);
+  doc.text(customerName.value, 14, 56);
+  doc.text(customerAddress.value, 14, 62);
 
-  y += 20;
-
-  /* ===== TABLE DATA ===== */
-  const rows = [];
+  // TABLE DATA
+  const tableData = [];
 
   document.querySelectorAll("#itemsTable tbody tr").forEach(row => {
     const product = row.children[0].querySelector("input").value;
@@ -718,70 +712,38 @@ function generatePDF() {
       const price = Number(
         priceCol.querySelector(`[data-type="${type}"]`)?.value || 0
       );
-      const quantity = Number(qty.value || 0);
 
-      if (quantity > 0) {
-        rows.push([
-          product,
-          type,
-          quantity,
-          `$${price.toFixed(2)}`,
-          `$${(quantity * price).toFixed(2)}`
-        ]);
-      }
+      tableData.push([
+        product,
+        type,
+        qty.value,
+        `$${price.toFixed(2)}`,
+        `$${(qty.value * price).toFixed(2)}`
+      ]);
     });
   });
 
-  /* ===== TABLE ===== */
   doc.autoTable({
-    startY: y,
+    startY: 75,
     head: [["Product", "Type", "Qty", "Unit Price", "Total"]],
-    body: rows,
-    theme: "grid",
-    styles: {
-      fontSize: 9,
-      cellPadding: 3,
-      valign: "middle"
-    },
-    headStyles: {
-      fillColor: [24, 184, 154],
-      textColor: 255,
-      fontStyle: "bold"
-    },
-    columnStyles: {
-      0: { cellWidth: 55 }, // Product
-      1: { cellWidth: 30 }, // Type
-      2: { cellWidth: 15, halign: "right" },
-      3: { cellWidth: 25, halign: "right" },
-      4: { cellWidth: 25, halign: "right" }
-    }
+    body: tableData,
+    styles: { fontSize: 9 },
+    headStyles: { fillColor: [24, 184, 154] }
   });
 
-  y = doc.lastAutoTable.finalY + 8;
+  const y = doc.lastAutoTable.finalY + 8;
 
-  /* ===== TOTALS ===== */
-  const rightX = 195;
+  doc.text(`Subtotal: ${sub.innerText}`, 140, y);
+  doc.text(`Discount: ${disc.innerText}`, 140, y + 6);
+  doc.text(`Sales Tax: ${tax.innerText}`, 140, y + 12);
+  doc.text(`Keg Deposit: ${keg.innerText}`, 140, y + 18);
 
-  doc.setFontSize(9);
-  doc.text(`Subtotal: ${sub.innerText}`, rightX, y, { align: "right" });
-  y += 5;
-  doc.text(`Discount: ${disc.innerText}`, rightX, y, { align: "right" });
-  y += 5;
-  doc.text(`Sales Tax: ${tax.innerText}`, rightX, y, { align: "right" });
-  y += 5;
-  doc.text(`Keg Deposit: ${keg.innerText}`, rightX, y, { align: "right" });
+  doc.setFontSize(11);
+  doc.text(`Total: ${total.innerText}`, 140, y + 26);
 
-  y += 7;
-  doc.setFont("helvetica", "bold");
-  doc.text(`Total: ${total.innerText}`, rightX, y, { align: "right" });
-
-  y += 10;
-  doc.setFont("helvetica", "normal");
-  doc.text(paymentNote.innerText, 15, y);
-
-  /* SAVE */
   doc.save(`Invoice_${invoiceNumber.value}.pdf`);
 }
+
 
 function updatePaymentNote(customerType) {
   const note = document.getElementById("paymentNote");
@@ -793,7 +755,27 @@ function updatePaymentNote(customerType) {
   }
 }
 
-function emailInvoice(){ alert("Email logic unchanged"); }
+async function emailInvoice() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.text("Invoice " + invoiceNumber.value, 14, 20);
+
+  const pdfBase64 = doc.output("datauristring");
+
+  await fetch(API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "emailInvoice",
+      invoice: invoiceNumber.value,
+      customer: customerName.value,
+      pdfBase64
+    })
+  });
+
+  alert("Invoice emailed successfully");
+}
+
 function refreshPricesForRow(row) {
   const productName = row.children[0].querySelector("input").value;
   if (!productData[productName]) return;
@@ -810,6 +792,25 @@ function refreshPricesForRow(row) {
   });
 
   calc();
+}
+function goBack() {
+  window.location.href = "invoices.html";
+}
+function loadImageAsBase64(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = function () {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
 }
 
 </script>
