@@ -278,6 +278,39 @@ function confirmProduct() {
   // TEMP: just close for now
   closeProduct();
 }
+function confirmProduct() {
+  const product = mpProduct.value.trim();
+  if (!product) {
+    alert("Product name is required");
+    return;
+  }
+
+  const rows = [
+    { type: "Case", price: priceCase.value },
+    { type: "Bottle", price: priceBottle.value },
+    { type: "1/6 Keg", price: priceSixth.value },
+    { type: "1/2 Keg", price: priceHalf.value }
+  ];
+
+  // keep only rows with a price
+  const productsToSave = rows
+    .filter(r => r.price !== "")
+    .map(r => ({
+      product,
+      type: r.type,
+      price: Number(r.price)
+    }));
+
+  if (productsToSave.length === 0) {
+    alert("Enter at least one price");
+    return;
+  }
+
+  console.log("Products to save:", productsToSave);
+
+  // TEMP: just close for now
+  closeProduct();
+}
 
 function calc(){
   let subtotal=0;
