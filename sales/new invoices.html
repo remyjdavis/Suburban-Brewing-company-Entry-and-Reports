@@ -409,23 +409,24 @@ function calc() {
   let subtotal = 0;
 
   document.querySelectorAll("#itemsTable tbody tr").forEach(row => {
-    const container = row.children[2];
+    const qtyContainer = row.children[2];
+    const price = Number(row.children[3].querySelector("input").value || 0);
     const totalCell = row.children[4];
+
     let rowTotal = 0;
 
-    container.querySelectorAll("div").forEach(line => {
-      const qty = Number(line.children[0].value || 0);
-      const price = Number(line.children[1].value || 0);
-      rowTotal += qty * price;
+    qtyContainer.querySelectorAll("input[type=number]").forEach(qtyInput => {
+      rowTotal += Number(qtyInput.value || 0) * price;
     });
 
     totalCell.innerText = "$" + rowTotal.toFixed(2);
     subtotal += rowTotal;
   });
 
-  document.getElementById("sub").innerText = "$" + subtotal.toFixed(2);
-  document.getElementById("total").innerText = "$" + subtotal.toFixed(2);
+  sub.innerText = "$" + subtotal.toFixed(2);
+  total.innerText = "$" + subtotal.toFixed(2);
 }
+
 
 /* FIX #2 — SAVE INVOICE */
 async function saveInvoice(){
