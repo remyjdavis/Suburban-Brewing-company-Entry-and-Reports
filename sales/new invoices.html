@@ -1,39 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>New Invoice | Suburban Brewing Company</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<title>New Invoice | Suburban Brewing Company</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- jsPDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <!-- jsPDF AutoTable -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
-  <!-- Barcode -->
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
-    .topbar {
-      display: flex;
-      align-items: center;
-      border-bottom: 1px solid #ddd;
-      padding: 10px 20px;
-    }
-    .logo { height: 40px; margin-right: 12px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ddd; padding: 8px; }
-    th { background: #1abc9c; color: white; }
-    select, input { width: 100%; }
-    .quantity-inputs div { margin-bottom: 4px; }
-    .actions { margin-top: 20px; }
-  </style>
+<style>
+body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+header {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #ddd;
+  padding: 10px 20px;
+}
+.logo { height: 40px; margin-right: 12px; }
+section { padding: 20px; }
+h2 { margin-top: 0; }
+table { width: 100%; border-collapse: collapse; }
+th, td { border: 1px solid #ddd; padding: 8px; }
+th { background: #1abc9c; color: white; }
+select, input { width: 100%; }
+.quantity-inputs div { margin-bottom: 4px; }
+.totals { max-width: 400px; margin-top: 20px; }
+.totals div { display: flex; justify-content: space-between; }
+.actions { margin-top: 20px; }
+</style>
 </head>
 
 <body>
 
 <!-- HEADER -->
-<div class="topbar">
+<header>
   <img src="../sales/background.jpg" class="logo">
   <div>
     <strong>Suburban Brewing Company</strong><br>
@@ -48,69 +49,76 @@
     <div id="invoiceDate"></div>
     <svg id="barcode"></svg>
   </div>
-</div>
+</header>
+
+<!-- CUSTOMER -->
+<section>
+  <h2>Search for Customer</h2>
+  <input placeholder="Enter customer name or email">
+</section>
 
 <!-- ITEMS -->
-<h3 style="padding:10px">Invoice Items</h3>
+<section>
+  <h2>Invoice Items</h2>
+  <table id="invoiceItemsTable">
+    <thead>
+      <tr>
+        <th>Product Name</th>
+        <th>Product Type</th>
+        <th>Quantity</th>
+        <th>Unit Price</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <select class="product-name">
+            <option>Beer A</option>
+            <option>Beer B</option>
+            <option>Beer C</option>
+          </select>
+        </td>
+        <td>
+          <select multiple class="product-type" onchange="updateQuantities(this)">
+            <option>Case</option>
+            <option>Bottle</option>
+            <option>1/6 Keg</option>
+            <option>1/2 Keg</option>
+          </select>
+        </td>
+        <td class="quantity-cell">
+          <div class="quantity-inputs"></div>
+        </td>
+        <td>
+          <input type="number" class="unit-price" value="0" onchange="recalc()">
+        </td>
+        <td class="line-total">$0.00</td>
+      </tr>
+    </tbody>
+  </table>
 
-<table id="invoiceItemsTable">
-  <thead>
-    <tr>
-      <th>Product Name</th>
-      <th>Product Type</th>
-      <th>Quantity</th>
-      <th>Unit Price</th>
-      <th>Total</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>
-        <select class="product-name">
-          <option>Beer A</option>
-          <option>Beer B</option>
-          <option>Beer C</option>
-        </select>
-      </td>
-      <td>
-        <select multiple class="product-type" onchange="updateQuantities(this)">
-          <option>Case</option>
-          <option>Bottle</option>
-          <option>1/6 Keg</option>
-          <option>1/2 Keg</option>
-        </select>
-      </td>
-      <td class="quantity-cell">
-        <div class="quantity-inputs"></div>
-      </td>
-      <td>
-        <input type="number" class="unit-price" value="0" onchange="recalc()">
-      </td>
-      <td class="line-total">$0.00</td>
-    </tr>
-  </tbody>
-</table>
+  <button onclick="addRow()">Add Item</button>
 
-<button onclick="addRow()">Add Item</button>
-
-<!-- TOTALS -->
-<div style="margin:20px">
-  Subtotal: $<span id="subtotal">0.00</span><br>
-  Sales Tax (6%): $<span id="tax">0.00</span><br>
-  Discount: $<span id="discount">0.00</span><br>
-  Keg Deposit: $<span id="keg">0.00</span><br>
-  <strong>Total: $<span id="finalTotal">0.00</span></strong>
-</div>
+  <!-- TOTALS (VISIBLE ON PAGE) -->
+  <div class="totals">
+    <div><span>Subtotal</span><span>$<span id="subtotal">0.00</span></span></div>
+    <div><span>Sales Tax (6%)</span><span>$<span id="tax">0.00</span></span></div>
+    <div><span>Discount</span><span>$<span id="discount">0.00</span></span></div>
+    <div><span>Keg Deposit</span><span>$<span id="keg">0.00</span></span></div>
+    <div><strong>Total</strong><strong>$<span id="finalTotal">0.00</span></strong></div>
+  </div>
+</section>
 
 <!-- ACTIONS -->
-<div class="actions">
+<section class="actions">
   <button onclick="savePDF()">Save Invoice</button>
   <button onclick="printPDF()">Print Invoice</button>
-</div>
+</section>
 
 <script>
 const { jsPDF } = window.jspdf;
-const customerType = "Restaurant"; // already established logic
+const customerType = "Restaurant";
 
 /* INIT */
 const inv = "INV-" + Math.floor(Math.random()*1000000);
@@ -123,34 +131,40 @@ function updateQuantities(sel) {
   const cell = sel.closest("tr").querySelector(".quantity-inputs");
   cell.innerHTML = "";
   Array.from(sel.selectedOptions).forEach(o=>{
-    const d=document.createElement("div");
-    d.innerHTML=`${o.textContent}: <input type="number" value="1" onchange="recalc()">`;
-    cell.appendChild(d);
+    cell.insertAdjacentHTML("beforeend",
+      `${o.textContent}: <input type="number" value="1" onchange="recalc()">`
+    );
   });
   recalc();
 }
 
 /* ADD ROW */
 function addRow() {
-  const t=document.querySelector("#invoiceItemsTable tbody");
-  t.insertAdjacentHTML("beforeend", t.rows[0].outerHTML);
+  const tbody=document.querySelector("#invoiceItemsTable tbody");
+  tbody.insertAdjacentHTML("beforeend", tbody.rows[0].outerHTML);
 }
 
-/* RECALC TOTALS */
+/* CALCULATIONS */
 function recalc() {
   let subtotal=0, keg=0;
+
   document.querySelectorAll("tbody tr").forEach(r=>{
     const price=+r.querySelector(".unit-price").value||0;
     let rowTotal=0;
+
     r.querySelectorAll(".quantity-inputs input").forEach(i=>{
       rowTotal+=price*(+i.value||0);
     });
+
     if ([...r.querySelectorAll(".product-type option:checked")]
         .some(o=>o.textContent.includes("Keg"))) keg+=30;
+
     r.querySelector(".line-total").textContent="$"+rowTotal.toFixed(2);
     subtotal+=rowTotal;
   });
+
   const tax = customerType==="Restaurant" ? subtotal*0.06 : 0;
+
   subtotalEl.textContent=subtotal.toFixed(2);
   taxEl.textContent=tax.toFixed(2);
   discount.textContent="0.00";
@@ -180,6 +194,7 @@ function buildPDF() {
     const price=r.querySelector(".unit-price").value;
     const qtyInputs=r.querySelectorAll(".quantity-inputs input");
     const types=r.querySelectorAll(".product-type option:checked");
+
     types.forEach((t,i)=>{
       rows.push([
         name,
@@ -198,13 +213,16 @@ function buildPDF() {
   });
 
   let y=doc.lastAutoTable.finalY+10;
-  doc.text(`Total: $${finalTotal.textContent}`,150,y);
+  doc.text(`Subtotal: $${subtotal.textContent}`,150,y);
+  doc.text(`Tax: $${tax.textContent}`,150,y+6);
+  doc.text(`Keg Deposit: $${keg.textContent}`,150,y+12);
+  doc.text(`Total: $${finalTotal.textContent}`,150,y+18);
 
   doc.text(
     customerType==="Restaurant"
       ?"Make checks payable to Suburban Brewing Company."
       :"Paid through Fintech.",
-    15,y+20
+    15,y+35
   );
 
   return doc;
