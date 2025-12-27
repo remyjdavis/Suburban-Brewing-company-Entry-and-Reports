@@ -10,231 +10,190 @@
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
 <style>
-body { font-family: Arial, sans-serif; background:#f4f4f4; padding:20px }
+body { font-family: Arial; background:#f4f4f4; padding:20px }
 .container { background:#fff; padding:20px; max-width:1100px; margin:auto }
-header { display:flex; justify-content:space-between }
-header img { width:80px }
 table { width:100%; border-collapse:collapse; margin-top:15px }
 th,td { border:1px solid #ccc; padding:8px }
 th { background:#18b89a; color:#fff }
 input,select { width:100%; padding:6px }
 button { padding:8px 14px; margin-top:10px }
 
-/* MODAL */
 .modal {
-  display:none;
   position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.5);
+  top:0; left:0; right:0; bottom:0;
+  background:rgba(0,0,0,0.5);
+  display:none;
   align-items:center;
   justify-content:center;
-  z-index:9999;
 }
-.modal-card {
+.modal-content {
   background:#fff;
   padding:20px;
   width:400px;
-  border-radius:6px;
 }
-.modal-card h3 { margin-top:0 }
-.modal-card button { width:48% }
-.modal-row { margin-bottom:10px }
 </style>
 </head>
 
 <body>
 <div class="container">
 
-<header>
-  <div>
-    <img src="background.jpg"><br>
-    <strong>Suburban Brewing Company</strong><br>
-    3041 Horseshoe Pike Suite 120 & 130<br>
-    Honey Brook, PA 19344<br>
-    Sales Rep: Remy Davis<br>
-    9086421019 | Remyjdavis90@gmail.com
-  </div>
-  <div>
-    Invoice #: <input id="invoiceNumber"><br>
-    Date: <span id="invoiceDate"></span><br>
-    <canvas id="barcodeCanvas"></canvas>
-  </div>
-</header>
+<h2>Invoice Items</h2>
 
-<hr>
-
-<h3>Customer</h3>
-<input id="customerName" placeholder="Customer Name">
-
-<h3>Invoice Items</h3>
 <table id="itemsTable">
 <thead>
 <tr>
   <th>Product</th>
   <th>Type</th>
   <th>Qty</th>
-  <th>Price</th>
+  <th>Unit Price</th>
   <th>Total</th>
 </tr>
 </thead>
 <tbody></tbody>
 </table>
+
 <button onclick="addRow()">Add Item</button>
 
-<div class="totals">
-  <div>Subtotal: <span id="sub">$0.00</span></div>
-  <div>Tax: <span id="tax">$0.00</span></div>
-  <div>Keg Deposit: <span id="keg">$0.00</span></div>
-  <strong>Total: <span id="total">$0.00</span></strong>
 </div>
 
-<button onclick="generatePDF()">Print</button>
-<button onclick="saveInvoice()">Save</button>
+<!-- NEW PRODUCT MODAL -->
+<div class="modal" id="newProductModal">
+  <div class="modal-content">
+    <h3>New Product</h3>
 
-</div>
-
-<!-- NEW CUSTOMER MODAL -->
-<div class="modal" id="customerModal">
-  <div class="modal-card">
-    <h3>New Customer</h3>
-
-    <div class="modal-row">
-      <label>Name</label>
-      <input id="modalName">
+    <div>
+      <strong>Product Name</strong>
+      <input id="np_name">
     </div>
 
-    <div class="modal-row">
-      <label>Address</label>
-      <input id="modalAddress">
+    <div>
+      <strong>Product Types & Prices</strong>
+      <div>
+        <label><input type="checkbox" value="Case"> Case</label>
+        <input type="number" data-price="Case" placeholder="Price">
+      </div>
+      <div>
+        <label><input type="checkbox" value="Bottle"> Bottle</label>
+        <input type="number" data-price="Bottle" placeholder="Price">
+      </div>
+      <div>
+        <label><input type="checkbox" value="1/6 Keg"> 1/6 Keg</label>
+        <input type="number" data-price="1/6 Keg" placeholder="Price">
+      </div>
+      <div>
+        <label><input type="checkbox" value="1/2 Keg"> 1/2 Keg</label>
+        <input type="number" data-price="1/2 Keg" placeholder="Price">
+      </div>
     </div>
 
-    <div class="modal-row">
-      <label>Customer Type</label>
-      <select id="modalCustomerType">
-        <option value="Restaurant">Restaurant</option>
-        <option value="Wholesaler">Wholesaler</option>
-        <option value="Other">Other</option>
-      </select>
-    </div>
-
-    <div class="modal-row">
-      <label>Payment Type</label>
-      <select id="modalPaymentType">
-        <option value="Invoice">Invoice</option>
-        <option value="Fintech">Fintech</option>
-        <option value="Check">Check</option>
-      </select>
-    </div>
-
-    <div style="display:flex; justify-content:space-between">
-      <button onclick="saveNewCustomer()">Save</button>
-      <button onclick="closeCustomerModal()">Cancel</button>
-    </div>
+    <button onclick="saveNewProduct()">Save Product</button>
+    <button onclick="closeNewProduct()">Cancel</button>
   </div>
 </div>
 
 <script>
-const API="https://script.google.com/macros/s/AKfycbys580shBiRLtAW0jAYFoinwKJrycSJQyW8qy95nvLr7dxqOGtzI3e_h9QQn8-ULTT3/exec";
-const TAX=0.06, KEG=30;
-let customers=[], products=[];
+/*************************************************
+ * CONFIG
+ *************************************************/
+const API_URL = "https://script.google.com/macros/s/AKfycbys580shBiRLtAW0jAYFoinwKJrycSJQyW8qy95nvLr7dxqOGtzI3e_h9QQn8-ULTT3/exec";
+const PRODUCT_TYPES = ["Case","Bottle","1/6 Keg","1/2 Keg"];
 
-invoiceDate.innerText=new Date().toLocaleDateString();
+let productsCache = [];
+let pendingProductInput = null;
 
-fetch(API+"?action=getNextInvoiceNumber").then(r=>r.json()).then(d=>{
-  invoiceNumber.value="INV-"+d.invoice;
-  JsBarcode("#barcodeCanvas",invoiceNumber.value,{displayValue:false});
-});
+/*************************************************
+ * LOAD PRODUCTS
+ *************************************************/
+fetch(`${API_URL}?action=getProducts`)
+  .then(r=>r.json())
+  .then(d=>productsCache = d);
 
-fetch(API+"?action=getCustomers").then(r=>r.json()).then(d=>customers=d);
-fetch(API+"?action=getProducts").then(r=>r.json()).then(d=>products=d);
-
-/******** CUSTOMER LOGIC (FIXED FULL CARD) ********/
-customerName.addEventListener("blur",()=>{
-  const name=customerName.value.trim();
-  if(!name) return;
-
-  const exists=customers.some(c=>c.name.toLowerCase()===name.toLowerCase());
-  if(exists) return;
-
-  modalName.value=name;
-  modalAddress.value="";
-  customerModal.style.display="flex";
-});
-
-function saveNewCustomer(){
-  fetch(API+"?action=saveCustomer"+
-    "&name="+encodeURIComponent(modalName.value)+
-    "&address="+encodeURIComponent(modalAddress.value)+
-    "&type="+encodeURIComponent(modalCustomerType.value)+
-    "&payment="+encodeURIComponent(modalPaymentType.value))
-    .then(()=> {
-      customers.push({ name:modalName.value });
-      customerModal.style.display="none";
-    });
-}
-function closeCustomerModal(){
-  customerModal.style.display="none";
-}
-
-/******** PRODUCT + QUANTITY LOGIC (UNCHANGED) ********/
+/*************************************************
+ * TABLE LOGIC
+ *************************************************/
 function addRow(){
-  const tr=document.createElement("tr");
-  const name=document.createElement("input");
-  name.onblur=()=>checkNewProduct(name);
-  const type=document.createElement("select");
-  type.multiple=true;
-  ["Case","Bottle","1/6 Keg","1/2 Keg"].forEach(v=>type.add(new Option(v,v)));
-  const qty=document.createElement("div");
-  type.onchange=()=>buildQty(qty,type);
-  const price=document.createElement("input"); price.type="number"; price.value=0; price.oninput=calc;
-  const total=document.createElement("span");
-  tr.append(td(name),td(type),td(qty),td(price),td(total));
-  itemsTable.querySelector("tbody").appendChild(tr);
+  const tr = document.createElement("tr");
+
+  const name = document.createElement("input");
+  name.onblur = () => checkNewProduct(name);
+
+  const type = document.createElement("select");
+  type.multiple = true;
+  PRODUCT_TYPES.forEach(t=>type.add(new Option(t,t)));
+
+  const qty = document.createElement("div");
+  type.onchange = () => buildQty(qty, type);
+
+  const price = document.createElement("input");
+  price.type="number";
+  price.oninput = calc;
+
+  const total = document.createElement("span");
+  total.innerText = "$0.00";
+
+  tr.append(td(name), td(type), td(qty), td(price), td(total));
+  document.querySelector("#itemsTable tbody").append(tr);
 }
 
-function checkNewProduct(i){
-  const name=i.value.trim();
-  if(!name) return;
-  const p=products.find(x=>x.product.toLowerCase()===name.toLowerCase());
-  if(p){ i.closest("tr").children[3].firstChild.value=p.price; calc(); return; }
-  if(confirm("New product. Save?")){
-    const price=prompt("Price?");
-    fetch(API+"?action=saveProduct&product="+encodeURIComponent(name)+"&price="+price);
-    products.push({product:name,price});
-  }
-}
-
-function buildQty(c,s){
-  c.innerHTML="";
-  [...s.selectedOptions].forEach(o=>{
+function buildQty(container, select){
+  container.innerHTML="";
+  [...select.selectedOptions].forEach(o=>{
     const i=document.createElement("input");
-    i.type="number"; i.value=1; i.dataset.k=o.value.includes("Keg");
+    i.type="number";
+    i.value=1;
+    i.dataset.type=o.value;
     i.oninput=calc;
-    c.append(o.value,i,document.createElement("br"));
+    container.append(o.value+" ", i, document.createElement("br"));
   });
+}
+
+function td(el){
+  const td=document.createElement("td");
+  td.append(el);
+  return td;
 }
 
 function calc(){
-  let sub=0,k=0;
-  document.querySelectorAll("tbody tr").forEach(r=>{
-    let q=0;
-    r.children[2].querySelectorAll("input").forEach(i=>{
-      q+=+i.value;
-      if(i.dataset.k==="true") k+=+i.value;
-    });
-    const line=q*+r.children[3].firstChild.value;
-    r.children[4].innerText="$"+line.toFixed(2);
-    sub+=line;
+  document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
+    const price=+r.children[3].firstChild.value;
+    let qty=0;
+    r.children[2].querySelectorAll("input").forEach(i=>qty+=+i.value);
+    r.children[4].innerText="$"+(price*qty).toFixed(2);
   });
-  subEl.innerText="$"+sub.toFixed(2);
-  tax.innerText="$"+(sub*TAX).toFixed(2);
-  keg.innerText="$"+(k*KEG).toFixed(2);
-  total.innerText="$"+(sub+sub*TAX+k*KEG).toFixed(2);
 }
 
-function generatePDF(){ alert("PDF logic unchanged"); }
-function saveInvoice(){ alert("Save unchanged"); }
-function td(e){ const d=document.createElement("td"); d.appendChild(e); return d; }
+/*************************************************
+ * NEW PRODUCT LOGIC
+ *************************************************/
+function checkNewProduct(input){
+  const val = input.value.trim();
+  if(!val) return;
+
+  const exists = productsCache.some(p=>p.product === val);
+  if(!exists){
+    pendingProductInput = input;
+    document.getElementById("np_name").value = val;
+    document.getElementById("newProductModal").style.display="flex";
+  }
+}
+
+function closeNewProduct(){
+  document.getElementById("newProductModal").style.display="none";
+}
+
+function saveNewProduct(){
+  const name = document.getElementById("np_name").value;
+
+  document.querySelectorAll("#newProductModal input[type=checkbox]:checked")
+    .forEach(cb=>{
+      const price = document.querySelector(`[data-price="${cb.value}"]`).value;
+
+      fetch(`${API_URL}?action=saveProduct&product=${encodeURIComponent(name)}&type=${encodeURIComponent(cb.value)}&price=${price}`);
+      productsCache.push({ product:name, type:cb.value, price:price });
+    });
+
+  closeNewProduct();
+}
 </script>
 </body>
 </html>
