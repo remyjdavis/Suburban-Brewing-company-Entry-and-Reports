@@ -165,6 +165,12 @@ function checkNewCustomer(v){
     customerModal.style.display="flex";
   }
 }
+function checkNewProduct(value) {
+  if (!value) return;
+
+  mpProduct.value = value;
+  productModal.style.display = "flex";
+}
 
 /* FIX #1 — SAVE CUSTOMER VIA POST */
 function confirmCustomer(){
