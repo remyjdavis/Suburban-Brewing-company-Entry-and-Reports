@@ -28,22 +28,25 @@ button { padding:8px 14px; margin-top:10px }
   display:none; align-items:center; justify-content:center; z-index:9999
 }
 .modal { background:#fff; padding:20px; width:400px; border-radius:6px }
+.type-column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .type-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 22px;
   font-size: 14px;
   line-height: 1;
-  margin: 0;
-  padding: 0;
   white-space: nowrap;
 }
 
-.type-row input[type="checkbox"] {
+.type-row input {
   margin: 0;
-  padding: 0;
 }
+
 
 #itemsTable td:nth-child(2) {
   vertical-align: top;
@@ -410,12 +413,26 @@ function addRow() {
 
   // TYPE CHECKBOXES
   const typesDiv = document.createElement("div");
-  typesDiv.innerHTML = `
-    <label class="type-row"><input type="checkbox" data-type="Case"> Case</label>
-    <label class="type-row"><input type="checkbox" data-type="Bottle"> Bottle</label>
-    <label class="type-row"><input type="checkbox" data-type="1/6 Keg"> 1/6 Keg</label>
-    <label class="type-row"><input type="checkbox" data-type="1/2 Keg"> 1/2 Keg</label>
-  `;
+typesDiv.className = "type-column";
+typesDiv.innerHTML = `
+  <div class="type-row">
+    <input type="checkbox" data-type="Case">
+    <span>Case</span>
+  </div>
+  <div class="type-row">
+    <input type="checkbox" data-type="Bottle">
+    <span>Bottle</span>
+  </div>
+  <div class="type-row">
+    <input type="checkbox" data-type="1/6 Keg">
+    <span>1/6 Keg</span>
+  </div>
+  <div class="type-row">
+    <input type="checkbox" data-type="1/2 Keg">
+    <span>1/2 Keg</span>
+  </div>
+`;
+
 
   // STACKED COLUMNS
   const qtyCol = document.createElement("div");
@@ -650,16 +667,49 @@ async function saveInvoice() {
 
 function generatePDF() {
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
+  const doc = new jsPDF("p", "mm", "letter");
 
-  doc.setFontSize(14);
-  doc.text("Invoice " + invoiceNumber.value, 14, 20);
+  let y = 15;
+
+  /* ===== HEADER ===== */
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.text("Suburban Brewing Company", 15, y);
+
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text("3041 Horseshoe Pike Suite 120 & 130", 15, y + 5);
+  doc.text("Honey Brook, PA 19344", 15, y + 10);
+  doc.text("Sales Rep: Remy Davis | 908-642-1019", 15, y + 15);
+  doc.text("Remyjdavis90@gmail.com", 15, y + 20);
+
+  /* RIGHT HEADER */
+  doc.setFontSize(9);
+  doc.text(`Invoice #: ${invoiceNumber.value}`, 150, y);
+  doc.text(`Date: ${invoiceDate.innerText}`, 150, y + 6);
+
+  /* BARCODE IMAGE */
+  const barcodeCanvas = document.getElementById("barcodeCanvas");
+  const barcodeImg = barcodeCanvas.toDataURL("image/png");
+  doc.addImage(barcodeImg, "PNG", 150, y + 10, 45, 18);
+
+  y += 35;
+  doc.line(15, y, 195, y);
+  y += 8;
+
+  /* ===== CUSTOMER ===== */
   doc.setFontSize(10);
-  doc.text("Customer: " + customerName.value, 14, 28);
+  doc.setFont("helvetica", "bold");
+  doc.text("Customer", 15, y);
 
-  let y = 40;
+  doc.setFont("helvetica", "normal");
+  doc.text(customerName.value, 15, y + 6);
+  doc.text(customerAddress.value, 15, y + 11);
 
-  const tableData = [];
+  y += 20;
+
+  /* ===== TABLE DATA ===== */
+  const rows = [];
 
   document.querySelectorAll("#itemsTable tbody tr").forEach(row => {
     const product = row.children[0].querySelector("input").value;
@@ -671,26 +721,71 @@ function generatePDF() {
       const price = Number(
         priceCol.querySelector(`[data-type="${type}"]`)?.value || 0
       );
+      const quantity = Number(qty.value || 0);
 
-      tableData.push([
-        product,
-        type,
-        qty.value,
-        `$${price.toFixed(2)}`,
-        `$${(qty.value * price).toFixed(2)}`
-      ]);
+      if (quantity > 0) {
+        rows.push([
+          product,
+          type,
+          quantity,
+          `$${price.toFixed(2)}`,
+          `$${(quantity * price).toFixed(2)}`
+        ]);
+      }
     });
   });
 
+  /* ===== TABLE ===== */
   doc.autoTable({
     startY: y,
     head: [["Product", "Type", "Qty", "Unit Price", "Total"]],
-    body: tableData
+    body: rows,
+    theme: "grid",
+    styles: {
+      fontSize: 9,
+      cellPadding: 3,
+      valign: "middle"
+    },
+    headStyles: {
+      fillColor: [24, 184, 154],
+      textColor: 255,
+      fontStyle: "bold"
+    },
+    columnStyles: {
+      0: { cellWidth: 55 }, // Product
+      1: { cellWidth: 30 }, // Type
+      2: { cellWidth: 15, halign: "right" },
+      3: { cellWidth: 25, halign: "right" },
+      4: { cellWidth: 25, halign: "right" }
+    }
   });
 
-  doc.text("Total: " + total.innerText, 14, doc.lastAutoTable.finalY + 10);
+  y = doc.lastAutoTable.finalY + 8;
+
+  /* ===== TOTALS ===== */
+  const rightX = 195;
+
+  doc.setFontSize(9);
+  doc.text(`Subtotal: ${sub.innerText}`, rightX, y, { align: "right" });
+  y += 5;
+  doc.text(`Discount: ${disc.innerText}`, rightX, y, { align: "right" });
+  y += 5;
+  doc.text(`Sales Tax: ${tax.innerText}`, rightX, y, { align: "right" });
+  y += 5;
+  doc.text(`Keg Deposit: ${keg.innerText}`, rightX, y, { align: "right" });
+
+  y += 7;
+  doc.setFont("helvetica", "bold");
+  doc.text(`Total: ${total.innerText}`, rightX, y, { align: "right" });
+
+  y += 10;
+  doc.setFont("helvetica", "normal");
+  doc.text(paymentNote.innerText, 15, y);
+
+  /* SAVE */
   doc.save(`Invoice_${invoiceNumber.value}.pdf`);
 }
+
 function updatePaymentNote(customerType) {
   const note = document.getElementById("paymentNote");
 
