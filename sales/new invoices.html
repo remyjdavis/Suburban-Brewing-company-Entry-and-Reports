@@ -260,7 +260,6 @@ function confirmProduct() {
     { type: "1/2 Keg", price: priceHalf.value }
   ];
 
-  // keep only rows with a price
   const productsToSave = rows
     .filter(r => r.price !== "")
     .map(r => ({
@@ -275,29 +274,27 @@ function confirmProduct() {
   }
 
   Promise.all(
-  productsToSave.map(p =>
-    fetch(API, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-body: JSON.stringify({
-  action: "saveProduct",
-  product: p.product,
-  type: p.type,
-  price: p.price
-})
+    productsToSave.map(p => {
+      const params = new URLSearchParams({
+        action: "saveProduct",
+        product: p.product,
+        type: p.type,
+        price: p.price
+      });
 
+      return fetch(API + "?" + params.toString())
+        .then(r => r.json());
     })
   )
-)
-.then(() => {
-  closeProduct();
-})
-.catch(err => {
-  console.error(err);
-  alert("Failed to save products");
-});
-
+  .then(() => {
+    closeProduct();
+  })
+  .catch(err => {
+    console.error(err);
+    alert("Failed to save products");
+  });
 }
+
 
 function calc(){
   let subtotal=0;
