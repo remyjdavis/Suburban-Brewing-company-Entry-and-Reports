@@ -418,21 +418,24 @@ function calc() {
   let subtotal = 0;
 
   document.querySelectorAll("#itemsTable tbody tr").forEach(row => {
-    const qtyContainer = row.children[2];
-    const priceInput = row.children[3].querySelector("input");
+    const container = row.children[2];
     const totalCell = row.children[4];
+    let rowTotal = 0;
 
-    const unitPrice = Number(priceInput.value || 0);
-    let lineTotal = 0;
-
-    qtyContainer.querySelectorAll("input[type=number]").forEach(qtyInput => {
-      const qty = Number(qtyInput.value || 0);
-      lineTotal += qty * unitPrice;
+    container.querySelectorAll("div").forEach(line => {
+      const qty = Number(line.children[0].value || 0);
+      const price = Number(line.children[1].value || 0);
+      rowTotal += qty * price;
     });
 
-    totalCell.innerText = "$" + lineTotal.toFixed(2);
-    subtotal += lineTotal;
+    totalCell.innerText = "$" + rowTotal.toFixed(2);
+    subtotal += rowTotal;
   });
+
+  sub.innerText = "$" + subtotal.toFixed(2);
+  total.innerText = "$" + subtotal.toFixed(2);
+}
+
 
   document.getElementById("sub").innerText = "$" + subtotal.toFixed(2);
   document.getElementById("total").innerText = "$" + subtotal.toFixed(2);
@@ -444,6 +447,20 @@ async function saveInvoice(){
   const subtotal = parseFloat(sub.innerText.replace("$","")) || 0;
 
   const pdfBase64 = btoa("Invoice " + invoiceNumber.value);
+const items = [];
+
+document.querySelectorAll("#itemsTable tbody tr").forEach(row => {
+  const product = row.children[0].querySelector("input").value;
+
+  row.children[2].querySelectorAll("div").forEach(line => {
+    items.push({
+      product,
+      type: line.dataset.type,
+      qty: Number(line.children[0].value),
+      price: Number(line.children[1].value)
+    });
+  });
+});
 
   await fetch(API, {
     method: "POST",
@@ -453,6 +470,7 @@ async function saveInvoice(){
       invoice: invoiceNumber.value,
       customer: customerName.value,
       customerType: "Restaurant",
+      Items,
       subtotal,
       totalCases: 0,
       kegs: 0,
