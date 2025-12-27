@@ -16,7 +16,6 @@ body { font-family: Arial, sans-serif; background:#f4f4f4; margin:0; padding:20p
 header { display:flex; justify-content:space-between; align-items:flex-start }
 header img { width:80px; margin-right:15px }
 .company { display:flex }
-h1 { margin:0 }
 table { width:100%; border-collapse:collapse; margin-top:15px }
 th,td { border:1px solid #ccc; padding:8px; text-align:left }
 th { background:#18b89a; color:#fff }
@@ -24,23 +23,8 @@ input,select { width:100%; padding:6px }
 button { padding:8px 14px; margin-top:10px }
 .totals { max-width:300px; margin-left:auto; margin-top:20px }
 .totals div { display:flex; justify-content:space-between; margin:6px 0 }
-
-/* MODALS */
-.modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.5);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-}
-.modal-card {
-  background: #fff;
-  padding: 20px;
-  width: 350px;
-  border-radius: 6px;
-}
+.modal { position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; z-index:9999 }
+.modal-card { background:#fff; padding:20px; width:350px; border-radius:6px }
 </style>
 </head>
 
@@ -104,7 +88,6 @@ button { padding:8px 14px; margin-top:10px }
 
 </div>
 
-<!-- NEW CUSTOMER MODAL -->
 <div id="newCustomerModal" class="modal">
   <div class="modal-card">
     <h4>New Customer Detected</h4>
@@ -114,7 +97,6 @@ button { padding:8px 14px; margin-top:10px }
   </div>
 </div>
 
-<!-- NEW PRODUCT MODAL -->
 <div id="newProductModal" class="modal">
   <div class="modal-card">
     <h4>New Product Detected</h4>
@@ -125,75 +107,48 @@ button { padding:8px 14px; margin-top:10px }
 </div>
 
 <script>
-/***********************
- * MEMORY (HTML ONLY)
- ***********************/
 const knownCustomers = [];
 const knownProducts = ["Beer A","Beer B","Beer C"];
 const types = ["Case","Bottle","1/6 Keg","1/2 Keg"];
+let pendingCustomer=null,pendingProduct=null;
 
-let pendingCustomer = null;
-let pendingProduct = null;
+invoiceDate.innerText=new Date().toLocaleDateString();
+JsBarcode("#barcode",invoiceNumber.value,{width:1.5,height:40,displayValue:false});
 
-/***********************
- * INIT
- ***********************/
-document.getElementById("invoiceDate").innerText =
-  new Date().toLocaleDateString();
-
-JsBarcode("#barcode", document.getElementById("invoiceNumber").value, {
-  width:1.5, height:40, displayValue:false
-});
-
-/***********************
- * ROWS
- ***********************/
 function addRow(){
-  const tr = document.createElement("tr");
+  const tr=document.createElement("tr");
+  const p=document.createElement("input");
+  p.placeholder="Product name";
+  p.onblur=()=>checkNewProduct(p.value);
 
-  const p = document.createElement("input");
-  p.placeholder = "Product name";
-  p.onblur = () => checkNewProduct(p.value);
-
-  const t = document.createElement("select");
-  t.multiple = true;
+  const t=document.createElement("select");
+  t.multiple=true;
   types.forEach(v=>t.add(new Option(v,v)));
-  t.onchange = ()=>buildQty(q,t);
+  t.onchange=()=>buildQty(q,t);
 
-  const q = document.createElement("div");
-
-  const price = document.createElement("input");
-  price.type="number"; price.value=0; price.oninput=calc;
-
-  const total = document.createElement("span");
+  const q=document.createElement("div");
+  const price=document.createElement("input");
+  price.type="number";price.value=0;price.oninput=calc;
+  const total=document.createElement("span");
   total.innerText="$0.00";
 
-  tr.append(td(p), td(t), td(q), td(price), td(total));
-  document.querySelector("#itemsTable tbody").append(tr);
+  tr.append(td(p),td(t),td(q),td(price),td(total));
+  itemsTable.querySelector("tbody").append(tr);
 }
 
-function buildQty(container,select){
-  container.innerHTML="";
-  [...select.selectedOptions].forEach(o=>{
+function buildQty(c,s){
+  c.innerHTML="";
+  [...s.selectedOptions].forEach(o=>{
     const i=document.createElement("input");
-    i.type="number"; i.value=1; i.dataset.type=o.value;
-    i.oninput=calc;
-    container.append(o.value+" ",i,document.createElement("br"));
+    i.type="number";i.value=1;i.dataset.type=o.value;i.oninput=calc;
+    c.append(o.value+" ",i,document.createElement("br"));
   });
 }
+function td(e){const d=document.createElement("td");d.append(e);return d;}
 
-function td(el){
-  const d=document.createElement("td");
-  d.append(el);
-  return d;
-}
-
-/***********************
- * CALCS
- ***********************/
 function calc(){
   let subtotal=0;
-  document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
+  itemsTable.querySelectorAll("tbody tr").forEach(r=>{
     const price=r.children[3].firstChild.value;
     let qty=0;
     r.children[2].querySelectorAll("input").forEach(i=>qty+=+i.value);
@@ -202,72 +157,54 @@ function calc(){
     subtotal+=line;
   });
   const tax=subtotal*0.06;
-  document.getElementById("sub").innerText="$"+subtotal.toFixed(2);
-  document.getElementById("tax").innerText="$"+tax.toFixed(2);
-  document.getElementById("total").innerText="$"+(subtotal+tax).toFixed(2);
+  sub.innerText="$"+subtotal.toFixed(2);
+  taxEl=tax;
+  tax.innerText="$"+tax.toFixed(2);
+  total.innerText="$"+(subtotal+tax).toFixed(2);
 }
 
-/***********************
- * NEW DETECTION
- ***********************/
 function checkNewCustomer(){
-  const name = customerName.value.trim();
-  if (name && !knownCustomers.includes(name)) {
-    pendingCustomer = name;
-    document.getElementById("newCustomerText").innerText = name;
-    document.getElementById("newCustomerModal").style.display="flex";
+  const n=customerName.value.trim();
+  if(n&&!knownCustomers.includes(n)){
+    pendingCustomer=n;
+    newCustomerText.innerText=n;
+    newCustomerModal.style.display="flex";
     return true;
   }
   return false;
 }
-
-function checkNewProduct(name){
-  if (name && !knownProducts.includes(name)) {
-    pendingProduct = name;
-    document.getElementById("newProductText").innerText = name;
-    document.getElementById("newProductModal").style.display="flex";
+function checkNewProduct(n){
+  if(n&&!knownProducts.includes(n)){
+    pendingProduct=n;
+    newProductText.innerText=n;
+    newProductModal.style.display="flex";
   }
 }
+function confirmNewCustomer(){knownCustomers.push(pendingCustomer);pendingCustomer=null;closeModals();}
+function confirmNewProduct(){knownProducts.push(pendingProduct);pendingProduct=null;closeModals();}
+function closeModals(){document.querySelectorAll(".modal").forEach(m=>m.style.display="none");}
 
-function confirmNewCustomer(){
-  knownCustomers.push(pendingCustomer);
-  pendingCustomer = null;
-  closeModals();
-}
-
-function confirmNewProduct(){
-  knownProducts.push(pendingProduct);
-  pendingProduct = null;
-  closeModals();
-}
-
-function closeModals(){
-  document.querySelectorAll(".modal").forEach(m=>m.style.display="none");
-}
-
-/***********************
- * PDF
- ***********************/
 function generatePDF(){
-  if (checkNewCustomer()) return;
-
-  const { jsPDF } = window.jspdf;
-  const d = new jsPDF();
+  if(checkNewCustomer())return;
+  const {jsPDF}=window.jspdf;
+  const d=new jsPDF();
 
   d.addImage("background.jpg","PNG",14,10,20,20);
   d.text("Suburban Brewing Company",40,16);
   d.text("3041 Horseshoe Pike Suite 120 & 130",40,22);
   d.text("Honey Brook, PA 19344",40,28);
+  d.text("Sales Rep: Remy Davis | Phone: 9086421019",40,34);
+  d.text("Email: Remyjdavis90@gmail.com",40,40);
 
   d.text(`Invoice #: ${invoiceNumber.value}`,140,16);
   d.text(`Date: ${invoiceDate.innerText}`,140,22);
 
-  d.text("Bill To:",14,40);
-  d.text(customerName.value,14,46);
-  d.text(customerAddress.value,14,52);
+  d.text("Bill To:",14,52);
+  d.text(customerName.value,14,58);
+  d.text(customerAddress.value,14,64);
 
   const rows=[];
-  document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
+  itemsTable.querySelectorAll("tbody tr").forEach(r=>{
     rows.push([
       r.children[0].firstChild.value,
       [...r.children[1].firstChild.selectedOptions].map(o=>o.value).join(", "),
@@ -278,14 +215,19 @@ function generatePDF(){
   });
 
   d.autoTable({
-    startY:60,
+    startY:72,
     head:[["Product","Type","Qty","Price","Total"]],
     body:rows
   });
 
-  d.text(`Total: ${total.innerText}`,140,d.lastAutoTable.finalY+10);
-  d.text(paymentNote.innerText,14,d.lastAutoTable.finalY+20);
+  let y=d.lastAutoTable.finalY+10;
+  d.text(`Subtotal: ${sub.innerText}`,140,y); y+=6;
+  d.text(`Discount: ${disc.innerText}`,140,y); y+=6;
+  d.text(`Sales Tax: ${tax.innerText}`,140,y); y+=6;
+  d.text(`Keg Deposit: ${keg.innerText}`,140,y); y+=6;
+  d.text(`Total: ${total.innerText}`,140,y+2);
 
+  d.text(paymentNote.innerText,14,y+14);
   d.save("invoice.pdf");
 }
 </script>
