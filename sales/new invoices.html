@@ -385,6 +385,21 @@ function saveInvoiceLineItems(invoiceNumberValue) {
   }
 })();
 </script>
+<script>
+function postSaveCustomer(customer){
+  return fetch(API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "saveCustomer",
+      name: customer.name,
+      address: customer.address || "",
+      type: customer.type || "",
+      payment: customer.payment || ""
+    })
+  }).then(r => r.json());
+}
+</script>
 
 </body>
 </html>
