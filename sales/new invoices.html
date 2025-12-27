@@ -28,15 +28,19 @@ button { padding:8px 14px; margin-top:10px }
   display:none; align-items:center; justify-content:center; z-index:9999
 }
 .modal { background:#fff; padding:20px; width:400px; border-radius:6px }
-.type-pill {
-  display: inline-flex;
+.type-row {
+  display: flex;
   align-items: center;
   gap: 6px;
-  margin-right: 14px;
+  margin-bottom: 6px;
   font-size: 14px;
-  font-weight: 500;
   white-space: nowrap;
 }
+
+.type-row input {
+  margin: 0;
+}
+
 
 .type-pill input {
   margin: 0;
@@ -352,19 +356,20 @@ p.onchange = () => {
 
   const typesDiv = document.createElement("div");
 typesDiv.innerHTML = `
-  <label class="type-pill">
+  <label class="type-row">
     <input type="checkbox" data-type="Case"> Case
   </label>
-  <label class="type-pill">
+  <label class="type-row">
     <input type="checkbox" data-type="Bottle"> Bottle
   </label>
-  <label class="type-pill">
-    <input type="checkbox" data-type="1/6 Keg"> 1/6
+  <label class="type-row">
+    <input type="checkbox" data-type="1/6 Keg"> 1/6 Keg
   </label>
-  <label class="type-pill">
-    <input type="checkbox" data-type="1/2 Keg"> 1/2
+  <label class="type-row">
+    <input type="checkbox" data-type="1/2 Keg"> 1/2 Keg
   </label>
 `;
+
 
 
   const qtyContainer = document.createElement("div");
