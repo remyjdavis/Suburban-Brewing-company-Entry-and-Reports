@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>New Invoice | Suburban Brewing Company</title>
+<title>Invoice</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -10,18 +10,20 @@
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
 <style>
-body { font-family: Arial, sans-serif; background:#f4f4f4; margin:0; padding:20px }
-.container { background:#fff; padding:20px; max-width:1100px; margin:auto }
-header { display:flex; justify-content:space-between; align-items:flex-start }
-header img { width:70px; object-fit:contain }
-.company { display:flex; gap:12px }
-table { width:100%; border-collapse:collapse; margin-top:15px }
-th,td { border:1px solid #ccc; padding:6px; font-size:13px }
-th { background:#18b89a; color:#fff }
-input,select { width:100%; padding:5px }
-button { padding:8px 14px; margin-top:10px }
-.totals { max-width:340px; margin-left:auto; margin-top:20px }
-.totals div { display:flex; justify-content:space-between; margin:6px 0 }
+body{font-family:Arial;background:#f4f4f4;padding:20px}
+.container{background:#fff;padding:20px;max-width:1100px;margin:auto}
+header{display:flex;justify-content:space-between}
+header img{width:65px;object-fit:contain}
+table{width:100%;border-collapse:collapse;margin-top:15px}
+th,td{border:1px solid #ccc;padding:6px;font-size:13px}
+th{background:#18b89a;color:#fff}
+input,select{width:100%;padding:5px}
+button{padding:8px 14px;margin-top:10px}
+.totals{max-width:340px;margin-left:auto;margin-top:20px}
+.totals div{display:flex;justify-content:space-between}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center}
+.card{background:#fff;padding:20px;width:400px}
+.hidden{display:none}
 #customerType,#paymentType{display:none}
 </style>
 </head>
@@ -30,21 +32,21 @@ button { padding:8px 14px; margin-top:10px }
 <div class="container">
 
 <header>
-  <div class="company">
-    <img src="background.jpg">
-    <div style="font-size:13px">
-      <strong>Suburban Brewing Company</strong><br>
-      3041 Horseshoe Pike Suite 120 & 130<br>
-      Honey Brook, PA 19344<br>
-      Sales Rep: Remy Davis | 9086421019<br>
-      Remyjdavis90@gmail.com
-    </div>
-  </div>
-  <div style="font-size:13px">
-    Invoice #: <input id="invoiceNumber" value="INV-1001"><br>
-    Date: <span id="invoiceDate"></span><br>
-    <svg id="barcode"></svg>
-  </div>
+<div style="display:flex;gap:12px;font-size:12px">
+<img src="background.jpg">
+<div>
+<b>Suburban Brewing Company</b><br>
+3041 Horseshoe Pike Suite 120 & 130<br>
+Honey Brook, PA 19344<br>
+Remy Davis | 9086421019
+</div>
+</div>
+
+<div style="font-size:12px">
+Invoice #: <input id="invoiceNumber" value="INV-1001"><br>
+Date: <span id="invoiceDate"></span><br>
+<svg id="barcode"></svg>
+</div>
 </header>
 
 <hr>
@@ -53,177 +55,184 @@ button { padding:8px 14px; margin-top:10px }
 <input id="customerName" list="customerList" placeholder="Customer Name">
 <datalist id="customerList"></datalist>
 
-<input id="customerAddress" placeholder="Customer Address">
+<input id="customerAddress" placeholder="Customer Address" readonly>
 
-<select id="customerType">
-  <option value="restaurant">Restaurant</option>
-  <option value="wholesaler">Wholesaler</option>
-</select>
-
-<select id="paymentType">
-  <option value="check">Check</option>
-  <option value="fintech">Fintech</option>
-</select>
+<select id="customerType"></select>
+<select id="paymentType"></select>
 
 <h3>Invoice Items</h3>
 
 <table id="itemsTable">
 <thead>
-<tr>
-  <th>Product</th>
-  <th>Product Type</th>
-  <th>Quantity</th>
-  <th>Unit Price</th>
-  <th>Total</th>
-</tr>
+<tr><th>Product</th><th>Type</th><th>Qty</th><th>Price</th><th>Total</th></tr>
 </thead>
 <tbody></tbody>
 </table>
 
-<button id="addItemBtn">Add Item</button>
+<button onclick="addRow()">Add Item</button>
 
 <div class="totals">
-  <div><span>Subtotal</span><span id="sub">$0.00</span></div>
-  <div><span>Discount</span><span id="disc">$0.00</span></div>
-  <div><span>Sales Tax</span><span id="tax">$0.00</span></div>
-  <div><span>Keg Deposit</span><span id="keg">$0.00</span></div>
-  <hr>
-  <div><strong>Total</strong><strong id="total">$0.00</strong></div>
+<div><span>Subtotal</span><span id="sub">$0.00</span></div>
+<div><span>Discount</span><span id="disc">$0.00</span></div>
+<div><span>Sales Tax</span><span id="tax">$0.00</span></div>
+<div><span>Keg Deposit</span><span id="keg">$0.00</span></div>
+<hr>
+<div><b>Total</b><b id="total">$0.00</b></div>
 </div>
 
-<button onclick="saveInvoice()">Save</button>
-<button onclick="saveAndEmail()">Save & Email</button>
+<button onclick="saveInvoice(false)">Save</button>
+<button onclick="saveInvoice(true)">Save & Email</button>
+<button onclick="printInvoice()">Print</button>
 
-<p id="paymentNote">Make checks payable to Suburban Brewing Company.</p>
+<p id="paymentNote"></p>
 
 </div>
 
-<datalist id="productList"></datalist>
+<!-- NEW CUSTOMER CARD -->
+<div class="modal" id="newCustomerModal">
+<div class="card">
+<h3>New Customer</h3>
+<input id="ncName" disabled>
+<input id="ncAddress" placeholder="Address">
+<select id="ncType">
+<option value="restaurant">Restaurant</option>
+<option value="wholesaler">Wholesaler</option>
+</select>
+<select id="ncPayment">
+<option value="check">Check</option>
+<option value="fintech">Fintech</option>
+</select>
+<button onclick="saveNewCustomer()">Save Customer</button>
+</div>
+</div>
+
+<!-- NEW PRODUCT CARD -->
+<div class="modal" id="newProductModal">
+<div class="card">
+<h3>New Product</h3>
+<input id="npName" disabled>
+<label><input type="checkbox" value="Case"> Case</label>
+<input id="priceCase" placeholder="Case Price">
+<label><input type="checkbox" value="Bottle"> Bottle</label>
+<input id="priceBottle" placeholder="Bottle Price">
+<label><input type="checkbox" value="1/6 Keg"> 1/6 Keg</label>
+<input id="price16" placeholder="1/6 Keg Price">
+<label><input type="checkbox" value="1/2 Keg"> 1/2 Keg</label>
+<input id="price12" placeholder="1/2 Keg Price">
+<button onclick="saveNewProduct()">Save Product</button>
+</div>
+</div>
 
 <script>
-const API_URL="YOUR_SCRIPT_URL";
-
-let customers={}, products={};
+const API="YOUR_SCRIPT_URL";
+let customers={},products={};
 
 invoiceDate.innerText=new Date().toLocaleDateString();
 JsBarcode("#barcode",invoiceNumber.value,{width:1.5,height:40,displayValue:false});
 
-fetch(API_URL+"?action=getInit").then(r=>r.json()).then(d=>{
-  customers=d.customers;
-  products=d.products;
-
-  Object.keys(customers).forEach(c=>customerList.append(new Option(c,c)));
-  Object.keys(products).forEach(p=>productList.append(new Option(p,p)));
+fetch(API+"?action=init").then(r=>r.json()).then(d=>{
+customers=d.customers;products=d.products;
+Object.keys(customers).forEach(c=>customerList.append(new Option(c,c)));
 });
 
 customerName.onchange=()=>{
-  if(customers[customerName.value]){
-    customerAddress.value=customers[customerName.value].address;
-    customerType.value=customers[customerName.value].type;
-    paymentType.value=customers[customerName.value].payment;
-    recalc();
-  }
+if(!customers[customerName.value]){
+ncName.value=customerName.value;
+newCustomerModal.style.display="flex";
+}else{
+customerAddress.value=customers[customerName.value].address;
+customerType.value=customers[customerName.value].type;
+paymentType.value=customers[customerName.value].payment;
+}
 };
 
-addItemBtn.onclick=addRow;
+function saveNewCustomer(){
+fetch(API,{method:"POST",body:JSON.stringify({
+action:"saveCustomer",
+name:ncName.value,
+address:ncAddress.value,
+type:ncType.value,
+payment:ncPayment.value
+})}).then(()=>location.reload());
+}
 
 function addRow(){
-  const tr=document.createElement("tr");
+const tr=document.createElement("tr");
 
-  const p=document.createElement("input");
-  p.setAttribute("list","productList");
+const p=document.createElement("input");
+p.onchange=()=>{
+if(!products[p.value]){
+npName.value=p.value;
+newProductModal.style.display="flex";
+}
+};
 
-  const typeSelect=document.createElement("select");
-  typeSelect.multiple=true;
-  ["Case","Bottle","1/6 Keg","1/2 Keg"].forEach(v=>typeSelect.add(new Option(v,v)));
+const t=document.createElement("select");
+t.multiple=true;
+["Case","Bottle","1/6 Keg","1/2 Keg"].forEach(v=>t.add(new Option(v,v)));
 
-  const qtyBox=document.createElement("div");
+const q=document.createElement("div");
+t.onchange=()=>buildQty(q,t);
 
-  typeSelect.onchange=()=>buildQty(qtyBox,typeSelect);
+const price=document.createElement("input");
+price.type="number";price.value=0;price.oninput=recalc;
 
-  const price=document.createElement("input");
-  price.type="number"; price.value=0;
-  price.oninput=recalc;
+const total=document.createElement("span");
 
-  p.onchange=()=>{
-    if(products[p.value]) price.value=products[p.value].price;
-    recalc();
-  };
-
-  const total=document.createElement("span"); total.innerText="$0.00";
-
-  tr.append(td(p),td(typeSelect),td(qtyBox),td(price),td(total));
-  itemsTable.tBodies[0].append(tr);
+tr.append(td(p),td(t),td(q),td(price),td(total));
+itemsTable.tBodies[0].append(tr);
 }
 
-function buildQty(container,select){
-  container.innerHTML="";
-  [...select.selectedOptions].forEach(o=>{
-    const i=document.createElement("input");
-    i.type="number";
-    i.value=1;
-    i.dataset.type=o.value;
-    i.oninput=recalc;
-    container.append(o.value+" ",i,document.createElement("br"));
-  });
-  recalc();
+function buildQty(c,s){
+c.innerHTML="";
+[...s.selectedOptions].forEach(o=>{
+const i=document.createElement("input");
+i.type="number";i.value=1;i.dataset.type=o.value;i.oninput=recalc;
+c.append(o.value+" ",i,document.createElement("br"));
+});
+recalc();
 }
 
-function td(el){const d=document.createElement("td");d.append(el);return d}
+function td(e){const d=document.createElement("td");d.append(e);return d}
 
 function recalc(){
-  let subtotal=0,cases=0,kegs=0;
+let subtotal=0,cases=0,kegs=0;
+document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
+let qty=0,price=r.children[3].firstChild.value;
+r.children[2].querySelectorAll("input").forEach(i=>{
+qty+=+i.value;
+if(i.dataset.type==="Case")cases+=+i.value;
+if(i.dataset.type.includes("Keg"))kegs+=+i.value;
+});
+const line=qty*price;
+r.children[4].innerText="$"+line.toFixed(2);
+subtotal+=line;
+});
+const discount=cases>=10?subtotal*0.10:0;
+const tax=customerType.value==="restaurant"?(subtotal-discount)*0.06:0;
+const keg=kegs*30;
+const total=subtotal-discount+tax+keg;
 
-  document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
-    const price=+r.children[3].firstChild.value;
-    let qty=0;
-
-    r.children[2].querySelectorAll("input").forEach(i=>{
-      qty+=+i.value;
-      if(i.dataset.type==="Case") cases+=+i.value;
-      if(i.dataset.type.includes("Keg")) kegs+=+i.value;
-    });
-
-    const line=qty*price;
-    r.children[4].innerText="$"+line.toFixed(2);
-    subtotal+=line;
-  });
-
-  const discount=cases>=10?subtotal*0.10:0;
-  const tax=customerType.value==="restaurant"?(subtotal-discount)*0.06:0;
-  const kegDeposit=kegs*30;
-  const total=subtotal-discount+tax+kegDeposit;
-
-  sub.innerText="$"+subtotal.toFixed(2);
-  disc.innerText="-$"+discount.toFixed(2);
-  tax.innerText="$"+tax.toFixed(2);
-  keg.innerText="$"+kegDeposit.toFixed(2);
-  document.getElementById("total").innerText="$"+total.toFixed(2);
+sub.innerText="$"+subtotal.toFixed(2);
+disc.innerText="-$"+discount.toFixed(2);
+tax.innerText="$"+tax.toFixed(2);
+keg.innerText="$"+keg.toFixed(2);
+document.getElementById("total").innerText="$"+total.toFixed(2);
 }
 
-function saveInvoice(){send(false)}
-function saveAndEmail(){send(true)}
-
-function send(email){
-  fetch(API_URL,{method:"POST",body:JSON.stringify({
-    email,
-    invoiceNumber:invoiceNumber.value,
-    customer:{
-      name:customerName.value,
-      address:customerAddress.value,
-      type:customerType.value,
-      payment:paymentType.value
-    },
-    totals:{
-      subtotal:sub.innerText,
-      discount:disc.innerText,
-      tax:tax.innerText,
-      keg:keg.innerText,
-      total:document.getElementById("total").innerText
-    }
-  })});
+function saveInvoice(email){
+fetch(API,{method:"POST",body:JSON.stringify({
+action:"saveInvoice",
+email,
+invoice:invoiceNumber.value,
+customer:customerName.value,
+totals:{
+subtotal:sub.innerText,discount:disc.innerText,tax:tax.innerText,keg:keg.innerText,total:total.innerText
 }
+})});
+}
+
+function printInvoice(){window.print()}
 </script>
-
 </body>
 </html>
