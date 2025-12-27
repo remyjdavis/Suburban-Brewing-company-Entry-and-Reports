@@ -134,6 +134,11 @@
     .buttons {
       margin-top: 20px;
     }
+
+    .bottom-message {
+      margin-top: 40px;
+      font-style: italic;
+    }
   </style>
 </head>
 
@@ -160,6 +165,9 @@
         <label>Invoice #</label>
         <input type="text" id="invoiceNumber" value="" />
 
+        <!-- Barcode -->
+        <div id="barcode"></div>
+
         <!-- Invoice Date -->
         <div class="invoice-date" id="invoiceDate"></div>
       </div>
@@ -184,27 +192,8 @@
             <th>Total</th>
           </tr>
         </thead>
-        <tbody>
-          <tr>
-            <td>
-              <select>
-                <option>Beer A</option>
-                <option>Beer B</option>
-                <option>Beer C</option>
-              </select>
-            </td>
-            <td>
-              <select multiple onchange="updateQuantityInputs(this)">
-                <option>Case</option>
-                <option>Bottle</option>
-                <option>1/6 Keg</option>
-                <option>1/2 Keg</option>
-              </select>
-            </td>
-            <td><div class="quantity-inputs"></div></td>
-            <td><input type="number" min="0" step="0.01" value="0.00" class="unit-price" /></td>
-            <td><span class="total-price">$0.00</span></td>
-          </tr>
+        <tbody id="invoiceItemsBody">
+          <!-- Rows will be dynamically inserted here -->
         </tbody>
       </table>
       <button class="add-item-button" id="addItemButton">Add Item</button>
@@ -215,6 +204,7 @@
       <p><strong>Subtotal:</strong> $<span id="subtotal">0.00</span></p>
       <p><strong>Discount:</strong> $<span id="discount">0.00</span></p>
       <p><strong>Sales Tax (6%):</strong> $<span id="salesTax">0.00</span></p>
+      <p><strong>Keg Deposit:</strong> $<span id="kegDeposit">0.00</span></p>
       <p><strong>Total (after tax & discount):</strong> $<span id="finalTotal">0.00</span></p>
     </div>
 
@@ -224,10 +214,25 @@
       <button onclick="printInvoice()">Print Invoice</button>
       <button onclick="sendInvoiceEmail()">Send Invoice via Email</button>
     </div>
+
+    <!-- Bottom Message Based on Customer Type -->
+    <div class="bottom-message" id="bottomMessage">
+      <!-- Dynamically set this message based on customer type -->
+    </div>
   </section>
 
   <script>
     const { jsPDF } = window.jspdf;
+
+    // Example customer type (this would typically be set based on customer search or selection)
+    let customerType = 'Restaurant'; // or 'Other' for example purposes
+
+    // Generate Invoice Number and Date
+    window.onload = function() {
+      generateInvoiceNumber();
+      document.getElementById('invoiceDate').textContent = new Date().toLocaleDateString();
+      setBottomMessage(customerType);
+    };
 
     // Function to generate a unique invoice number
     function generateInvoiceNumber() {
@@ -235,20 +240,28 @@
       document.getElementById('invoiceNumber').value = invoiceNumber;
     }
 
-    // Function to generate the barcode based on the invoice number
-    function generateBarcode(invoiceNumber) {
-      JsBarcode("#barcode", invoiceNumber, {
-        format: "CODE128",
-        displayValue: true,
-        fontSize: 20
-      });
+    // Function to set the bottom message based on the customer type
+    function setBottomMessage(type) {
+      const message = type === 'Restaurant' 
+        ? 'Make checks payable to Suburban Brewing Company.' 
+        : 'Paid through Fintech.';
+      document.getElementById('bottomMessage').textContent = message;
     }
 
-    // Initialize the page by generating the invoice number and barcode
-    window.onload = function() {
-      generateInvoiceNumber();  
-      document.getElementById('invoiceDate').textContent = new Date().toLocaleDateString();  
-    };
+    // Add product item to the invoice table
+    document.getElementById('addItemButton').addEventListener('click', function() {
+      const table = document.getElementById('invoiceItemsBody');
+      const newRow = table.insertRow();
+      newRow.innerHTML = `
+        <td><select><option>Beer A</option><option>Beer B</option><option>Beer C</option></select></td>
+        <td><select multiple onchange="updateQuantityInputs(this)">
+          <option>Case</option><option>Bottle</option><option>1/6 Keg</option><option>1/2 Keg</option>
+        </select><div class="quantity-inputs"></div></td>
+        <td><input type="number" min="1" value="1" class="unit-price" /></td>
+        <td><input type="number" min="0" step="0.01" value="0.00" class="unit-price" /></td>
+        <td><span class="total-price">$0.00</span></td>
+      `;
+    });
 
     // Update the quantity inputs for each selected product type
     function updateQuantityInputs(selectElement) {
@@ -272,21 +285,6 @@
       });
     }
 
-    // Add a new item to the invoice
-    document.getElementById('addItemButton').addEventListener('click', function() {
-      const table = document.getElementById('invoiceItemsTable').getElementsByTagName('tbody')[0];
-      const newRow = table.insertRow(table.rows.length);
-      newRow.innerHTML = `
-        <td><select><option>Beer A</option><option>Beer B</option><option>Beer C</option></select></td>
-        <td><select multiple onchange="updateQuantityInputs(this)">
-          <option>Case</option><option>Bottle</option><option>1/6 Keg</option><option>1/2 Keg</option>
-        </select><div class="quantity-inputs"></div></td>
-        <td><input type="number" min="1" value="1" class="unit-price" /></td>
-        <td><input type="number" min="0" step="0.01" value="0.00" class="unit-price" /></td>
-        <td><span class="total-price">$0.00</span></td>
-      `;
-    });
-
     // Update the total for the invoice based on quantity and price
     function updateTotal() {
       const row = this.closest('tr');
@@ -306,33 +304,33 @@
     // Update the invoice summary with subtotals, discounts, tax, and total
     function updateInvoiceSummary() {
       let subtotal = 0;
+      let caseQuantity = 0;
+
       const rows = document.querySelectorAll('#invoiceItemsTable tbody tr');
       rows.forEach(row => {
         const total = parseFloat(row.querySelector('.total-price').textContent.replace('$', '')) || 0;
         subtotal += total;
+
+        const productType = Array.from(row.querySelectorAll('select option:checked'))
+                                  .map(option => option.textContent);
+        caseQuantity += productType.filter(type => type === "Case").length;
       });
 
       let discount = 0;
-      if (subtotal >= 100) {
+      if (caseQuantity >= 10) {
         discount = subtotal * 0.1;
       }
 
       let salesTax = subtotal * 0.06;
-      const finalTotal = subtotal - discount + salesTax;
+      const kegDeposit = caseQuantity > 0 ? 30 : 0;
+
+      const finalTotal = subtotal - discount + salesTax + kegDeposit;
 
       document.getElementById('subtotal').textContent = subtotal.toFixed(2);
       document.getElementById('discount').textContent = discount.toFixed(2);
       document.getElementById('salesTax').textContent = salesTax.toFixed(2);
+      document.getElementById('kegDeposit').textContent = kegDeposit.toFixed(2);
       document.getElementById('finalTotal').textContent = finalTotal.toFixed(2);
-    }
-
-    // Save the invoice as PDF
-    function saveInvoice() {
-      const pdf = generatePDF();
-      const pdfData = pdf.output('arraybuffer');
-      const pdfBlob = new Blob([pdfData], { type: 'application/pdf' });
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-      window.open(pdfUrl, '_blank');
     }
 
     // Generate the PDF
@@ -354,11 +352,28 @@
       doc.text(`Invoice #: ${invoiceNumber}`, 150, 30);
       doc.text(`Date: ${invoiceDate}`, 150, 35);
 
+      // Adding Table from HTML (autoTable)
       doc.autoTable({ html: '#invoiceItemsTable', startY: 60, theme: 'grid' });
 
       doc.text(`Total: $${finalTotal}`, 150, doc.lastAutoTable.finalY + 10);
 
+      // Add Barcode (using a mock barcode)
+      doc.text("Barcode: " + invoiceNumber, 150, doc.lastAutoTable.finalY + 20);
+
+      // Footer message based on customer type
+      const message = customerType === 'Restaurant' ? 'Make checks payable to Suburban Brewing Company.' : 'Paid through Fintech.';
+      doc.text(message, 20, doc.lastAutoTable.finalY + 30);
+
       return doc;
+    }
+
+    // Save the invoice as PDF
+    function saveInvoice() {
+      const pdf = generatePDF();
+      const pdfData = pdf.output('arraybuffer');
+      const pdfBlob = new Blob([pdfData], { type: 'application/pdf' });
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      window.open(pdfUrl, '_blank');
     }
 
     // Print the invoice as PDF
