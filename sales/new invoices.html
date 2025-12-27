@@ -432,15 +432,9 @@ function calc() {
     subtotal += rowTotal;
   });
 
-  sub.innerText = "$" + subtotal.toFixed(2);
-  total.innerText = "$" + subtotal.toFixed(2);
-}
-
-
   document.getElementById("sub").innerText = "$" + subtotal.toFixed(2);
   document.getElementById("total").innerText = "$" + subtotal.toFixed(2);
 }
-
 
 /* FIX #2 — SAVE INVOICE */
 async function saveInvoice(){
@@ -470,7 +464,7 @@ document.querySelectorAll("#itemsTable tbody tr").forEach(row => {
       invoice: invoiceNumber.value,
       customer: customerName.value,
       customerType: "Restaurant",
-      Items,
+      items,
       subtotal,
       totalCases: 0,
       kegs: 0,
