@@ -647,16 +647,16 @@ async function saveInvoice() {
   method: "POST",
   headers: { "Content-Type": "text/plain" }, // 🔑 NO PREFLIGHT
   body: JSON.stringify({
-    action: "saveInvoice",
-    invoice: invoiceNumber.value,
-    customer: customerName.value,
-    items,
-    subtotal,
-    tax: tax.innerText,
-    kegDeposit: keg.innerText,
-    total: total.innerText,
-    pdfBase64
-  })
+  action: "saveInvoice",
+  invoice: invoiceNumber.value,
+  customer: customerName.value,
+  subtotal,
+  tax: tax.innerText,
+  discount: disc.innerText,
+  kegDeposit: keg.innerText,
+  total: total.innerText,
+  pdfBase64
+})
 });
 
 
