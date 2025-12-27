@@ -644,20 +644,21 @@ async function saveInvoice() {
   });
 
   await fetch(API, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      action: "saveInvoice",
-      invoice: invoiceNumber.value,
-      customer: customerName.value,
-      items,
-      subtotal,
-      tax: tax.innerText,
-      kegDeposit: keg.innerText,
-      total: total.innerText,
-      pdfBase64
-    })
-  });
+  method: "POST",
+  headers: { "Content-Type": "text/plain" }, // 🔑 NO PREFLIGHT
+  body: JSON.stringify({
+    action: "saveInvoice",
+    invoice: invoiceNumber.value,
+    customer: customerName.value,
+    items,
+    subtotal,
+    tax: tax.innerText,
+    kegDeposit: keg.innerText,
+    total: total.innerText,
+    pdfBase64
+  })
+});
+
 
   alert("Invoice saved successfully");
 }
