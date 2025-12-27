@@ -40,6 +40,9 @@ select, input { width: 100%; }
   margin-right: 10px;
   padding: 8px 14px;
 }
+.invoice-meta input {
+  width: 160px;
+}
 </style>
 </head>
 
@@ -58,8 +61,11 @@ select, input { width: 100%; }
     Email: Remyjdavis90@gmail.com
   </div>
 
-  <div style="text-align:right">
-    <div><strong>Invoice #:</strong> <span id="invoiceNumber"></span></div>
+  <div class="invoice-meta" style="text-align:right">
+    <div>
+      <strong>Invoice #:</strong><br>
+      <input id="invoiceNumber" oninput="updateBarcode()">
+    </div>
     <div>Date: <span id="invoiceDate"></span></div>
     <svg id="barcode" style="margin-top:8px; width:160px; height:40px;"></svg>
   </div>
@@ -141,12 +147,21 @@ const { jsPDF } = window.jspdf;
 const customerType = "Restaurant";
 
 /* INIT */
-const invoice = "INV-" + Math.floor(Math.random()*900000);
-document.getElementById("invoiceNumber").textContent = invoice;
+const defaultInvoice = "INV-" + Math.floor(Math.random()*900000);
+const invoiceInput = document.getElementById("invoiceNumber");
+invoiceInput.value = defaultInvoice;
+
 document.getElementById("invoiceDate").textContent =
   new Date().toLocaleDateString();
 
-JsBarcode("#barcode", invoice, { displayValue:false });
+updateBarcode();
+
+/* BARCODE */
+function updateBarcode(){
+  const val = invoiceInput.value || "";
+  if (val.trim() === "") return;
+  JsBarcode("#barcode", val, { displayValue:false });
+}
 
 /* QUANTITIES */
 function updateQty(sel){
@@ -205,6 +220,7 @@ function recalc(){
 /* PDF */
 function buildPDF(){
   const doc = new jsPDF();
+  const invoice = invoiceInput.value;
 
   doc.addImage(
     document.querySelector(".logo"),
@@ -257,7 +273,7 @@ function buildPDF(){
   return doc;
 }
 
-function savePDF(){ buildPDF().save(invoice + ".pdf"); }
+function savePDF(){ buildPDF().save(invoiceInput.value + ".pdf"); }
 function printPDF(){
   const p = buildPDF();
   p.autoPrint();
@@ -265,7 +281,7 @@ function printPDF(){
 }
 
 function emailInvoice(){
-  const subject = `Invoice ${invoice}`;
+  const subject = `Invoice ${invoiceInput.value}`;
   const body =
     `Invoice Total: $${grand.textContent}%0D%0AThank you for your business.`;
   window.location.href =
