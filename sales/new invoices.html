@@ -11,6 +11,9 @@
   <!-- Include jsPDF autoTable Plugin -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.22/jspdf.plugin.autotable.min.js"></script>
 
+  <!-- Include jsBarcode -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
+
   <style>
     /* General Styles */
     body {
@@ -159,6 +162,7 @@
   </header>
 
   <section class="content">
+    <!-- Invoice Details Section -->
     <div class="section">
       <h2>Invoice Details</h2>
       <div class="invoice-details">
@@ -173,6 +177,7 @@
       </div>
     </div>
 
+    <!-- Customer Search Section -->
     <div class="section">
       <h2>Search for Customer</h2>
       <input type="text" id="customerSearch" placeholder="Enter customer name or email" />
@@ -180,6 +185,7 @@
       <button id="addNewCustomer" style="display:none;">Add New Customer</button>
     </div>
 
+    <!-- Invoice Items Section -->
     <div class="section">
       <h2>Invoice Items</h2>
       <table id="invoiceItemsTable">
@@ -199,7 +205,7 @@
       <button class="add-item-button" id="addItemButton">Add Item</button>
     </div>
 
-    <!-- Invoice Summary -->
+    <!-- Invoice Summary Section -->
     <div id="totalSummary">
       <p><strong>Subtotal:</strong> $<span id="subtotal">0.00</span></p>
       <p><strong>Discount:</strong> $<span id="discount">0.00</span></p>
@@ -208,14 +214,14 @@
       <p><strong>Total (after tax & discount):</strong> $<span id="finalTotal">0.00</span></p>
     </div>
 
-    <!-- Buttons for Save, Print, and Email -->
+    <!-- Action Buttons -->
     <div class="buttons">
       <button onclick="saveInvoice()">Save Invoice</button>
       <button onclick="printInvoice()">Print Invoice</button>
       <button onclick="sendInvoiceEmail()">Send Invoice via Email</button>
     </div>
 
-    <!-- Bottom Message Based on Customer Type -->
+    <!-- Bottom Message Section Based on Customer Type -->
     <div class="bottom-message" id="bottomMessage">
       <!-- Dynamically set this message based on customer type -->
     </div>
@@ -238,6 +244,13 @@
     function generateInvoiceNumber() {
       const invoiceNumber = 'INV-' + Math.floor(Math.random() * 1000000);
       document.getElementById('invoiceNumber').value = invoiceNumber;
+
+      // Generate the barcode for the invoice number
+      JsBarcode("#barcode", invoiceNumber, {
+        format: "CODE128",
+        displayValue: true,
+        fontSize: 18
+      });
     }
 
     // Function to set the bottom message based on the customer type
@@ -251,9 +264,10 @@
     // Add product item to the invoice table
     document.getElementById('addItemButton').addEventListener('click', function() {
       const table = document.getElementById('invoiceItemsBody');
+      const productName = "Beer A"; // Example product name, update based on selected product
       const newRow = table.insertRow();
       newRow.innerHTML = `
-        <td><select><option>Beer A</option><option>Beer B</option><option>Beer C</option></select></td>
+        <td>${productName}</td>  <!-- Displaying selected product name -->
         <td><select multiple onchange="updateQuantityInputs(this)">
           <option>Case</option><option>Bottle</option><option>1/6 Keg</option><option>1/2 Keg</option>
         </select><div class="quantity-inputs"></div></td>
@@ -352,13 +366,13 @@
       doc.text(`Invoice #: ${invoiceNumber}`, 150, 30);
       doc.text(`Date: ${invoiceDate}`, 150, 35);
 
+      // Add the barcode below the invoice number
+      doc.addImage(generateBarcodeImage(invoiceNumber), 'PNG', 150, 45, 60, 20);
+
       // Adding Table from HTML (autoTable)
       doc.autoTable({ html: '#invoiceItemsTable', startY: 60, theme: 'grid' });
 
       doc.text(`Total: $${finalTotal}`, 150, doc.lastAutoTable.finalY + 10);
-
-      // Add Barcode (using a mock barcode)
-      doc.text("Barcode: " + invoiceNumber, 150, doc.lastAutoTable.finalY + 20);
 
       // Footer message based on customer type
       const message = customerType === 'Restaurant' ? 'Make checks payable to Suburban Brewing Company.' : 'Paid through Fintech.';
@@ -394,6 +408,17 @@
       if (email) {
         window.location.href = `mailto:${email}?subject=Invoice ${document.getElementById('invoiceNumber').value}&body=Please find the attached invoice.&attachment=${pdfUrl}`;
       }
+    }
+
+    // Function to generate barcode image (base64 encoded)
+    function generateBarcodeImage(invoiceNumber) {
+      const canvas = document.createElement('canvas');
+      JsBarcode(canvas, invoiceNumber, {
+        format: "CODE128",
+        displayValue: true,
+        fontSize: 18
+      });
+      return canvas.toDataURL('image/png');
     }
   </script>
 </body>
