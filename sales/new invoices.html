@@ -34,18 +34,26 @@ button { padding:8px 14px; margin-top:10px }
   gap: 6px;
 }
 
-.type-row {
+/* FORCE TYPE COLUMN INTO VERTICAL GRID */
+.type-stack {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 6px;
-  font-size: 14px;
-  line-height: 1;
-  white-space: nowrap;
 }
 
-.type-row input {
+.type-line {
+  display: grid;
+  grid-template-columns: 16px auto;
+  align-items: center;
+  column-gap: 6px;
+  height: 28px;
+  font-size: 14px;
+}
+
+.type-line input[type="checkbox"] {
   margin: 0;
 }
+
 
 
 #itemsTable td:nth-child(2) {
@@ -413,25 +421,14 @@ function addRow() {
 
   // TYPE CHECKBOXES
   const typesDiv = document.createElement("div");
-typesDiv.className = "type-column";
+typesDiv.className = "type-stack";
 typesDiv.innerHTML = `
-  <div class="type-row">
-    <input type="checkbox" data-type="Case">
-    <span>Case</span>
-  </div>
-  <div class="type-row">
-    <input type="checkbox" data-type="Bottle">
-    <span>Bottle</span>
-  </div>
-  <div class="type-row">
-    <input type="checkbox" data-type="1/6 Keg">
-    <span>1/6 Keg</span>
-  </div>
-  <div class="type-row">
-    <input type="checkbox" data-type="1/2 Keg">
-    <span>1/2 Keg</span>
-  </div>
+  <div class="type-line"><input type="checkbox" data-type="Case"><span>Case</span></div>
+  <div class="type-line"><input type="checkbox" data-type="Bottle"><span>Bottle</span></div>
+  <div class="type-line"><input type="checkbox" data-type="1/6 Keg"><span>1/6 Keg</span></div>
+  <div class="type-line"><input type="checkbox" data-type="1/2 Keg"><span>1/2 Keg</span></div>
 `;
+
 
 
   // STACKED COLUMNS
