@@ -31,11 +31,18 @@ button { padding:8px 14px; margin-top:10px }
 .type-pill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  margin-right: 10px;
-  font-size: 13px;
+  gap: 6px;
+  margin-right: 14px;
+  font-size: 14px;
+  font-weight: 500;
   white-space: nowrap;
 }
+
+.type-pill input {
+  margin: 0;
+  transform: scale(1.05);
+}
+
 
 .type-pill input {
   margin: 0;
@@ -52,6 +59,12 @@ button { padding:8px 14px; margin-top:10px }
 #itemsTable th:nth-child(3),
 #itemsTable td:nth-child(3) {
   width: 140px;
+}
+/* Type column needs breathing room */
+#itemsTable th:nth-child(2),
+#itemsTable td:nth-child(2) {
+  min-width: 260px;
+  white-space: normal;
 }
 
 </style>
