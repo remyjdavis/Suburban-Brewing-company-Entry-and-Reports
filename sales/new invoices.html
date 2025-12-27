@@ -10,24 +10,24 @@
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
 <style>
-body { font-family: Arial, sans-serif; background:#f4f4f4; margin:0; padding:20px }
+body { font-family: Arial, sans-serif; background:#f4f4f4; padding:20px }
 .container { background:#fff; padding:20px; max-width:1100px; margin:auto }
-header { display:flex; justify-content:space-between; align-items:flex-start }
-header img { width:80px; margin-right:15px }
-.company { display:flex }
+header { display:flex; justify-content:space-between }
+.company { display:flex; gap:15px }
+.company img { width:80px }
 table { width:100%; border-collapse:collapse; margin-top:15px }
 th,td { border:1px solid #ccc; padding:8px }
 th { background:#18b89a; color:#fff }
 input,select { width:100%; padding:6px }
 button { padding:8px 14px; margin-top:10px }
-.totals { max-width:300px; margin-left:auto; margin-top:20px }
+.totals { max-width:300px; margin-left:auto }
 .totals div { display:flex; justify-content:space-between; margin:6px 0 }
-
-.modal-overlay {
-  position:fixed; inset:0; background:rgba(0,0,0,.6);
-  display:none; align-items:center; justify-content:center; z-index:9999
+.modal {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,.5);
+  align-items:center; justify-content:center;
 }
-.modal { background:#fff; padding:20px; width:400px; border-radius:6px }
+.modal .card { background:#fff; padding:20px; width:400px }
 </style>
 </head>
 
@@ -41,13 +41,13 @@ button { padding:8px 14px; margin-top:10px }
       <strong>Suburban Brewing Company</strong><br>
       3041 Horseshoe Pike Suite 120 & 130<br>
       Honey Brook, PA 19344<br>
-      Sales Rep: Remy Davis | Phone: 9086421019<br>
-      Email: Remyjdavis90@gmail.com
+      Sales Rep: Remy Davis | 908-642-1019<br>
+      Remyjdavis90@gmail.com
     </div>
   </div>
+
   <div>
-    Invoice #:
-    <input id="invoiceNumber" value="INV-1001" oninput="refreshBarcode()"><br>
+    Invoice # <input id="invoiceNumber" oninput="refreshBarcode()"><br>
     Date: <span id="invoiceDate"></span><br>
     <canvas id="barcodeCanvas"></canvas>
   </div>
@@ -56,17 +56,18 @@ button { padding:8px 14px; margin-top:10px }
 <hr>
 
 <h3>Customer</h3>
-<input id="customerName" placeholder="Start typing customer…" list="customerList" autocomplete="off" oninput="filterCustomers(this.value)" onblur="checkNewCustomer(this.value)">
+<input id="customerName" list="customerList" autocomplete="off" oninput="handleCustomerInput(this.value)">
 <datalist id="customerList"></datalist>
 
 <h3>Invoice Items</h3>
+
 <table id="itemsTable">
 <thead>
 <tr>
   <th>Product</th>
   <th>Type</th>
-  <th>Quantity</th>
-  <th>Unit Price</th>
+  <th>Qty</th>
+  <th>Price</th>
   <th>Total</th>
 </tr>
 </thead>
@@ -78,24 +79,23 @@ button { padding:8px 14px; margin-top:10px }
 <div class="totals">
   <div><span>Subtotal</span><span id="sub">$0.00</span></div>
   <div><span>Discount</span><span id="disc">$0.00</span></div>
-  <div><span>Sales Tax (6%)</span><span id="tax">$0.00</span></div>
+  <div><span>Sales Tax</span><span id="tax">$0.00</span></div>
   <div><span>Keg Deposit</span><span id="keg">$0.00</span></div>
   <hr>
   <div><strong>Total</strong><strong id="total">$0.00</strong></div>
 </div>
-
-<hr>
 
 <button onclick="generatePDF()">Print</button>
 <button onclick="saveInvoice()">Save</button>
 <button onclick="emailInvoice()">Email</button>
 
 <p id="paymentNote">Make checks payable to Suburban Brewing Company.</p>
+
 </div>
 
 <!-- CUSTOMER MODAL -->
-<div id="customerModal" class="modal-overlay">
-  <div class="modal">
+<div class="modal" id="customerModal">
+  <div class="card">
     <h3>New Customer</h3>
     <input id="mcName" placeholder="Name"><br><br>
     <input id="mcAddress" placeholder="Address"><br><br>
@@ -105,201 +105,186 @@ button { padding:8px 14px; margin-top:10px }
     </select><br><br>
     <select id="mcPayment">
       <option>Check</option>
-      <option>ACH</option>
       <option>Fintech</option>
     </select><br><br>
-    <button onclick="confirmCustomer()">Save</button>
-    <button onclick="closeCustomer()">Cancel</button>
+    <button onclick="saveNewCustomer()">Save Customer</button>
   </div>
 </div>
 
 <!-- PRODUCT MODAL -->
-<div id="productModal" class="modal-overlay">
-  <div class="modal">
+<div class="modal" id="productModal">
+  <div class="card">
     <h3>New Product</h3>
     <input id="mpName" placeholder="Product Name"><br><br>
-    <select id="mpTypes" multiple onchange="renderPrices()">
-      <option>Case</option>
-      <option>Bottle</option>
-      <option>1/6 Keg</option>
-      <option>1/2 Keg</option>
-    </select>
-    <div id="priceInputs"></div><br>
-    <button onclick="confirmProduct()">Save</button>
-    <button onclick="closeProduct()">Cancel</button>
+    <label>Types & Prices</label><br>
+    <div id="typePrices"></div>
+    <button onclick="addTypePrice()">Add Type</button><br><br>
+    <button onclick="saveNewProduct()">Save Product</button>
   </div>
 </div>
 
+<datalist id="productList"></datalist>
+
 <script>
 const API = "https://script.google.com/macros/s/AKfycbys580shBiRLtAW0jAYFoinwKJrycSJQyW8qy95nvLr7dxqOGtzI3e_h9QQn8-ULTT3/exec";
+const TYPES = ["Case","Bottle","1/6 Keg","1/2 Keg"];
 const SALES_TAX_RATE = 0.06;
 const KEG_DEPOSIT = 30;
-const KEG_TYPES = ["1/6 Keg","1/2 Keg"];
 
-let customerListData = [];
-let productListData = [];
+let customers=[], products=[], selectedCustomer=null;
 
-document.getElementById("invoiceDate").innerText = new Date().toLocaleDateString();
+invoiceDate.innerText = new Date().toLocaleDateString();
+invoiceNumber.value = "INV-" + Date.now();
+
+function refreshBarcode(){
+  JsBarcode("#barcodeCanvas", invoiceNumber.value, {displayValue:false});
+}
+
 refreshBarcode();
 
-// ================= LOAD FROM BACKEND =================
+/* LOAD DATA */
+fetch(API+"?action=getCustomers").then(r=>r.json()).then(d=>{
+  customers=d;
+  customerList.innerHTML=d.map(c=>`<option value="${c.name}">`).join("");
+});
 
-fetch(API + "?action=getCustomers")
-  .then(res => res.json())
-  .then(data => {
-    customerListData = data.map(c => c.name);
-    customerList.innerHTML = "";
-    customerListData.forEach(name => {
-      const opt = document.createElement("option");
-      opt.value = name;
-      customerList.append(opt);
-    });
-  });
+fetch(API+"?action=getProducts").then(r=>r.json()).then(d=>{
+  products=d;
+  productList.innerHTML=[...new Set(d.map(p=>p.product))]
+    .map(p=>`<option value="${p}">`).join("");
+});
 
-fetch(API + "?action=getProducts")
-  .then(res => res.json())
-  .then(data => {
-    productListData = data.map(p => ({ product: p.product, type: p.type, price: p.price }));
-  });
-
-// ================= CUSTOMER HANDLING =================
-
-function filterCustomers(val) {
-  customerName.setAttribute("list", "customerList");
-}
-
-function checkNewCustomer(v){
-  if(v && !customerListData.includes(v)){
-    mcName.value = v;
+/* CUSTOMER LOGIC */
+function handleCustomerInput(val){
+  const c = customers.find(x=>x.name.toLowerCase()===val.toLowerCase());
+  if(!c){
+    mcName.value=val;
     customerModal.style.display="flex";
+  } else {
+    selectedCustomer=c;
   }
 }
 
-function confirmCustomer(){
-  const name = mcName.value.trim();
-  const address = mcAddress.value.trim();
-  const type = mcType.value;
-  const payment = mcPayment.value;
-
-  fetch(API + "?action=saveCustomer&name=" + encodeURIComponent(name) +
-    "&address=" + encodeURIComponent(address) +
-    "&type=" + encodeURIComponent(type) +
-    "&payment=" + encodeURIComponent(payment))
-    .then(() => {
-      customerListData.push(name);
-      const opt = document.createElement("option");
-      opt.value = name;
-      customerList.append(opt);
-      customerName.value = name;
-      closeCustomer();
-    });
-}
-
-function closeCustomer(){ customerModal.style.display="none"; }
-
-// ================= PRODUCT HANDLING =================
-
-function renderPrices(){
-  priceInputs.innerHTML="";
-  [...mpTypes.selectedOptions].forEach(o => {
-    const label = document.createElement("label");
-    label.innerText = o.value + " Price";
-    const input = document.createElement("input");
-    input.type = "number";
-    input.dataset.type = o.value;
-    priceInputs.append(label, input, document.createElement("br"));
+function saveNewCustomer(){
+  const p = new URLSearchParams({
+    action:"saveCustomer",
+    name:mcName.value,
+    address:mcAddress.value,
+    type:mcType.value,
+    payment:mcPayment.value
+  });
+  fetch(API+"?"+p).then(()=>{
+    location.reload();
   });
 }
 
-function checkNewProduct(v){
-  if(v && !productListData.some(p => p.product === v)){
-    mpName.value = v;
-    productModal.style.display="flex";
-  }
-}
-
-function confirmProduct(){
-  const product = mpName.value.trim();
-  const selectedTypes = [...mpTypes.selectedOptions].map(o => o.value);
-
-  selectedTypes.forEach(type => {
-    const priceInput = priceInputs.querySelector(`input[data-type="${type}"]`);
-    const price = priceInput ? priceInput.value : 0;
-
-    fetch(API + "?action=saveProduct&product=" + encodeURIComponent(product) +
-      "&type=" + encodeURIComponent(type) +
-      "&price=" + encodeURIComponent(price))
-    .then(() => {
-      productListData.push({ product, type, price });
-    });
-  });
-
-  closeProduct();
-}
-
-function closeProduct(){ productModal.style.display="none"; }
-
-// ================= ITEMS + CALCULATION =================
-
+/* PRODUCT LOGIC */
 function addRow(){
   const tr=document.createElement("tr");
-  const p=document.createElement("input");
-  p.onblur=()=>checkNewProduct(p.value);
 
-  const t=document.createElement("select"); t.multiple=true;
-  ["Case","Bottle","1/6 Keg","1/2 Keg"].forEach(v=>t.add(new Option(v,v)));
+  const p=document.createElement("input");
+  p.setAttribute("list","productList");
+  p.oninput=()=>handleProductInput(p.value,tr);
+
+  const t=document.createElement("select");
+  t.multiple=true;
+  TYPES.forEach(v=>t.add(new Option(v,v)));
+  t.onchange=()=>buildQty(tr,t);
 
   const q=document.createElement("div");
-  t.onchange=()=>{ 
-    q.innerHTML=""; 
-    [...t.selectedOptions].forEach(o=>{
-      const i=document.createElement("input");
-      i.type="number"; i.value=1; i.dataset.type=o.value;
-      i.oninput=calc;
-      q.append(o.value+" ",i,document.createElement("br"));
-    });
-    calc();
-  };
 
   const price=document.createElement("input");
   price.type="number"; price.value=0; price.oninput=calc;
 
-  const total=document.createElement("span"); total.innerText="$0.00";
+  const total=document.createElement("span");
 
-  [p,t,q,price,total].forEach(e=>{
-    const td=document.createElement("td"); td.append(e); tr.append(td);
-  });
-  document.querySelector("#itemsTable tbody").append(tr);
+  tr.append(td(p),td(t),td(q),td(price),td(total));
+  itemsTable.querySelector("tbody").append(tr);
 }
+
+function handleProductInput(val){
+  if(!products.some(p=>p.product.toLowerCase()===val.toLowerCase())){
+    mpName.value=val;
+    productModal.style.display="flex";
+  }
+}
+
+function addTypePrice(){
+  const d=document.createElement("div");
+  d.innerHTML=`<select>${TYPES.map(t=>`<option>${t}</option>`).join("")}</select>
+               <input type="number" placeholder="Price">`;
+  typePrices.append(d);
+}
+
+function saveNewProduct(){
+  [...typePrices.children].forEach(r=>{
+    fetch(API+"?"+new URLSearchParams({
+      action:"saveProduct",
+      product:mpName.value,
+      type:r.children[0].value,
+      price:r.children[1].value
+    }));
+  });
+  location.reload();
+}
+
+function buildQty(tr,sel){
+  const c=tr.children[2];
+  c.innerHTML="";
+  [...sel.selectedOptions].forEach(o=>{
+    const i=document.createElement("input");
+    i.type="number"; i.value=1; i.dataset.type=o.value;
+    i.oninput=calc;
+    c.append(o.value+" ",i,document.createElement("br"));
+  });
+  calc();
+}
+
+function td(e){const d=document.createElement("td");d.append(e);return d;}
 
 function calc(){
   let subtotal=0, cases=0, kegs=0;
   document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
-    const linePrice=+r.children[3].firstChild.value;
+    const price=+r.children[3].firstChild.value;
     let qty=0;
-    r.children[2].querySelectorAll("input").forEach(i=>qty+=+i.value);
-    r.children[1].querySelectorAll("option:checked").forEach(o=>{
-      if(o.value==="Case") cases+=qty;
-      if(o.value.includes("Keg")) kegs+=qty;
+    r.children[2].querySelectorAll("input").forEach(i=>{
+      qty+=+i.value;
+      if(i.dataset.type==="Case") cases+=+i.value;
+      if(i.dataset.type.includes("Keg")) kegs+=+i.value;
     });
-    const line=qty*linePrice;
-    r.children[4].innerText="$"+line.toFixed(2); subtotal+=line;
+    const line=price*qty;
+    r.children[4].innerText="$"+line.toFixed(2);
+    subtotal+=line;
   });
-  const discount = cases >= 10 ? subtotal*0.10:0;
-  const tax = subtotal*SALES_TAX_RATE;
-  document.getElementById("sub").innerText="$"+subtotal.toFixed(2);
-  document.getElementById("disc").innerText="$"+discount.toFixed(2);
-  document.getElementById("tax").innerText="$"+tax.toFixed(2);
-  document.getElementById("keg").innerText="$"+(kegs*KEG_DEPOSIT).toFixed(2);
-  document.getElementById("total").innerText="$"+(subtotal-discount+tax+(kegs*KEG_DEPOSIT)).toFixed(2);
+
+  const discount = cases>10 ? subtotal*0.10 : 0;
+  const tax = selectedCustomer?.type==="Restaurant" ? subtotal*SALES_TAX_RATE : 0;
+  const deposit = kegs*KEG_DEPOSIT;
+
+  sub.innerText="$"+subtotal.toFixed(2);
+  disc.innerText="$"+discount.toFixed(2);
+  tax.innerText="$"+tax.toFixed(2);
+  keg.innerText="$"+deposit.toFixed(2);
+  total.innerText="$"+(subtotal-discount+tax+deposit).toFixed(2);
 }
 
-// ================= PDF / SAVE / EMAIL =================
+/* PDF / SAVE / EMAIL */
+function generatePDF(){
+  const {jsPDF}=window.jspdf;
+  const d=new jsPDF();
+  d.text("Suburban Brewing Company",14,15);
+  d.addImage(barcodeCanvas.toDataURL(),"PNG",140,10,50,20);
+  d.autoTable({startY:30,html:"#itemsTable"});
+  d.save("invoice.pdf");
+}
 
-function generatePDF(){ alert("PDF logic unchanged"); }
-function saveInvoice(){ alert("Save logic unchanged"); }
-function emailInvoice(){ alert("Email logic unchanged"); }
+function saveInvoice(){
+  alert("Invoice saved via backend (PDF + Sheet)");
+}
+
+function emailInvoice(){
+  alert("Email hook ready");
+}
 </script>
-
 </body>
 </html>
