@@ -56,10 +56,10 @@ button { padding:8px 14px; margin-top:10px }
 <hr>
 
 <h3>Customer</h3>
-<input id="customerName" placeholder="Customer Name" autocomplete="off" onblur="checkNewCustomer(this.value)">
+<input id="customerName" placeholder="Start typing customer…" list="customerList" autocomplete="off" oninput="filterCustomers(this.value)" onblur="checkNewCustomer(this.value)">
+<datalist id="customerList"></datalist>
 
 <h3>Invoice Items</h3>
-
 <table id="itemsTable">
 <thead>
 <tr>
@@ -83,6 +83,8 @@ button { padding:8px 14px; margin-top:10px }
   <hr>
   <div><strong>Total</strong><strong id="total">$0.00</strong></div>
 </div>
+
+<hr>
 
 <button onclick="generatePDF()">Print</button>
 <button onclick="saveInvoice()">Save</button>
@@ -129,42 +131,134 @@ button { padding:8px 14px; margin-top:10px }
 </div>
 
 <script>
+const API = "https://script.google.com/macros/s/AKfycbys580shBiRLtAW0jAYFoinwKJrycSJQyW8qy95nvLr7dxqOGtzI3e_h9QQn8-ULTT3/exec";
 const SALES_TAX_RATE = 0.06;
 const KEG_DEPOSIT = 30;
-const knownCustomers = [];
-const knownProducts = [];
+const KEG_TYPES = ["1/6 Keg","1/2 Keg"];
+
+let customerListData = [];
+let productListData = [];
 
 document.getElementById("invoiceDate").innerText = new Date().toLocaleDateString();
 refreshBarcode();
 
-function refreshBarcode(){
-  JsBarcode("#barcodeCanvas", invoiceNumber.value, {
-    format:"CODE128", width:2, height:50, displayValue:false
+// ================= LOAD FROM BACKEND =================
+
+fetch(API + "?action=getCustomers")
+  .then(res => res.json())
+  .then(data => {
+    customerListData = data.map(c => c.name);
+    customerList.innerHTML = "";
+    customerListData.forEach(name => {
+      const opt = document.createElement("option");
+      opt.value = name;
+      customerList.append(opt);
+    });
+  });
+
+fetch(API + "?action=getProducts")
+  .then(res => res.json())
+  .then(data => {
+    productListData = data.map(p => ({ product: p.product, type: p.type, price: p.price }));
+  });
+
+// ================= CUSTOMER HANDLING =================
+
+function filterCustomers(val) {
+  customerName.setAttribute("list", "customerList");
+}
+
+function checkNewCustomer(v){
+  if(v && !customerListData.includes(v)){
+    mcName.value = v;
+    customerModal.style.display="flex";
+  }
+}
+
+function confirmCustomer(){
+  const name = mcName.value.trim();
+  const address = mcAddress.value.trim();
+  const type = mcType.value;
+  const payment = mcPayment.value;
+
+  fetch(API + "?action=saveCustomer&name=" + encodeURIComponent(name) +
+    "&address=" + encodeURIComponent(address) +
+    "&type=" + encodeURIComponent(type) +
+    "&payment=" + encodeURIComponent(payment))
+    .then(() => {
+      customerListData.push(name);
+      const opt = document.createElement("option");
+      opt.value = name;
+      customerList.append(opt);
+      customerName.value = name;
+      closeCustomer();
+    });
+}
+
+function closeCustomer(){ customerModal.style.display="none"; }
+
+// ================= PRODUCT HANDLING =================
+
+function renderPrices(){
+  priceInputs.innerHTML="";
+  [...mpTypes.selectedOptions].forEach(o => {
+    const label = document.createElement("label");
+    label.innerText = o.value + " Price";
+    const input = document.createElement("input");
+    input.type = "number";
+    input.dataset.type = o.value;
+    priceInputs.append(label, input, document.createElement("br"));
   });
 }
 
+function checkNewProduct(v){
+  if(v && !productListData.some(p => p.product === v)){
+    mpName.value = v;
+    productModal.style.display="flex";
+  }
+}
+
+function confirmProduct(){
+  const product = mpName.value.trim();
+  const selectedTypes = [...mpTypes.selectedOptions].map(o => o.value);
+
+  selectedTypes.forEach(type => {
+    const priceInput = priceInputs.querySelector(`input[data-type="${type}"]`);
+    const price = priceInput ? priceInput.value : 0;
+
+    fetch(API + "?action=saveProduct&product=" + encodeURIComponent(product) +
+      "&type=" + encodeURIComponent(type) +
+      "&price=" + encodeURIComponent(price))
+    .then(() => {
+      productListData.push({ product, type, price });
+    });
+  });
+
+  closeProduct();
+}
+
+function closeProduct(){ productModal.style.display="none"; }
+
+// ================= ITEMS + CALCULATION =================
+
 function addRow(){
   const tr=document.createElement("tr");
-
   const p=document.createElement("input");
   p.onblur=()=>checkNewProduct(p.value);
 
-  const t=document.createElement("select");
-  t.multiple=true;
+  const t=document.createElement("select"); t.multiple=true;
   ["Case","Bottle","1/6 Keg","1/2 Keg"].forEach(v=>t.add(new Option(v,v)));
-  const q=document.createElement("div");
 
+  const q=document.createElement("div");
   t.onchange=()=>{ 
     q.innerHTML=""; 
     [...t.selectedOptions].forEach(o=>{
       const i=document.createElement("input");
-      i.type="number"; 
-      i.value=1; 
-      i.dataset.type=o.value;
+      i.type="number"; i.value=1; i.dataset.type=o.value;
       i.oninput=calc;
       q.append(o.value+" ",i,document.createElement("br"));
     });
-    calc();   /* ← ADDED (CHANGE #2) */
+    calc();
   };
 
   const price=document.createElement("input");
@@ -181,66 +275,31 @@ function addRow(){
 function calc(){
   let subtotal=0, cases=0, kegs=0;
   document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
-    const price=+r.children[3].firstChild.value;
+    const linePrice=+r.children[3].firstChild.value;
     let qty=0;
-    r.children[2].querySelectorAll("input").forEach(i=>{
-      qty+=+i.value;
-      if(i.dataset.type==="Case") cases+=+i.value;
-      if(i.dataset.type.includes("Keg")) kegs+=+i.value;
+    r.children[2].querySelectorAll("input").forEach(i=>qty+=+i.value);
+    r.children[1].querySelectorAll("option:checked").forEach(o=>{
+      if(o.value==="Case") cases+=qty;
+      if(o.value.includes("Keg")) kegs+=qty;
     });
-    const line=price*qty;
-    r.children[4].innerText="$"+line.toFixed(2);
-    subtotal+=line;
+    const line=qty*linePrice;
+    r.children[4].innerText="$"+line.toFixed(2); subtotal+=line;
   });
-
-  const discount = cases >= 10 ? subtotal * 0.10 : 0; /* ← CHANGE #1 */
-  const tax = customerType==="Restaurant" ? subtotal*SALES_TAX_RATE : 0;
-
+  const discount = cases >= 10 ? subtotal*0.10:0;
+  const tax = subtotal*SALES_TAX_RATE;
   document.getElementById("sub").innerText="$"+subtotal.toFixed(2);
   document.getElementById("disc").innerText="$"+discount.toFixed(2);
   document.getElementById("tax").innerText="$"+tax.toFixed(2);
   document.getElementById("keg").innerText="$"+(kegs*KEG_DEPOSIT).toFixed(2);
-  document.getElementById("total").innerText="$"+(subtotal-discount+tax+kegs*KEG_DEPOSIT).toFixed(2);
+  document.getElementById("total").innerText="$"+(subtotal-discount+tax+(kegs*KEG_DEPOSIT)).toFixed(2);
 }
 
-/* CUSTOMER */
-let customerType="Wholesaler";
-function checkNewCustomer(v){
-  if(v && !knownCustomers.includes(v)){
-    mcName.value=v; customerModal.style.display="flex";
-  }
-}
-function confirmCustomer(){
-  knownCustomers.push(mcName.value);
-  customerName.value=mcName.value;
-  customerType=mcType.value;
-  closeCustomer();
-}
-function closeCustomer(){ customerModal.style.display="none"; }
-
-/* PRODUCT */
-function checkNewProduct(v){
-  if(v && !knownProducts.includes(v)){
-    mpName.value=v; productModal.style.display="flex";
-  }
-}
-function renderPrices(){
-  priceInputs.innerHTML="";
-  [...mpTypes.selectedOptions].forEach(o=>{
-    const i=document.createElement("input");
-    i.type="number"; i.dataset.type=o.value;
-    priceInputs.append(o.value+" ",i,document.createElement("br"));
-  });
-}
-function confirmProduct(){
-  knownProducts.push(mpName.value);
-  closeProduct();
-}
-function closeProduct(){ productModal.style.display="none"; }
+// ================= PDF / SAVE / EMAIL =================
 
 function generatePDF(){ alert("PDF logic unchanged"); }
 function saveInvoice(){ alert("Save logic unchanged"); }
 function emailInvoice(){ alert("Email logic unchanged"); }
 </script>
+
 </body>
 </html>
