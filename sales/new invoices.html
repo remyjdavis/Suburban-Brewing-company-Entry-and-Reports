@@ -256,6 +256,12 @@ typesDiv.innerHTML = `
   <label><input type="checkbox" data-type="1/6 Keg"> 1/6 Keg</label><br>
   <label><input type="checkbox" data-type="1/2 Keg"> 1/2 Keg</label>
 `;
+  const qtyContainer = document.createElement("div");
+
+typesDiv.querySelectorAll("input[type=checkbox]").forEach(cb => {
+  cb.onchange = () => handleTypeToggle(cb, qtyContainer);
+});
+
   const q=document.createElement("input");
   q.type="number"; q.value=1; q.oninput=calc;
 
