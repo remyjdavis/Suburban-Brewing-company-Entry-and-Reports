@@ -24,7 +24,23 @@ input,select { width:100%; padding:6px }
 button { padding:8px 14px; margin-top:10px }
 .totals { max-width:300px; margin-left:auto; margin-top:20px }
 .totals div { display:flex; justify-content:space-between; margin:6px 0 }
-.hidden { display:none }
+
+/* MODALS */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.modal-card {
+  background: #fff;
+  padding: 20px;
+  width: 350px;
+  border-radius: 6px;
+}
 </style>
 </head>
 
@@ -88,10 +104,40 @@ button { padding:8px 14px; margin-top:10px }
 
 </div>
 
+<!-- NEW CUSTOMER MODAL -->
+<div id="newCustomerModal" class="modal">
+  <div class="modal-card">
+    <h4>New Customer Detected</h4>
+    <p id="newCustomerText"></p>
+    <button onclick="confirmNewCustomer()">Save</button>
+    <button onclick="closeModals()">Cancel</button>
+  </div>
+</div>
+
+<!-- NEW PRODUCT MODAL -->
+<div id="newProductModal" class="modal">
+  <div class="modal-card">
+    <h4>New Product Detected</h4>
+    <p id="newProductText"></p>
+    <button onclick="confirmNewProduct()">Save</button>
+    <button onclick="closeModals()">Cancel</button>
+  </div>
+</div>
+
 <script>
-const products = ["Beer A","Beer B","Beer C"];
+/***********************
+ * MEMORY (HTML ONLY)
+ ***********************/
+const knownCustomers = [];
+const knownProducts = ["Beer A","Beer B","Beer C"];
 const types = ["Case","Bottle","1/6 Keg","1/2 Keg"];
 
+let pendingCustomer = null;
+let pendingProduct = null;
+
+/***********************
+ * INIT
+ ***********************/
 document.getElementById("invoiceDate").innerText =
   new Date().toLocaleDateString();
 
@@ -99,11 +145,15 @@ JsBarcode("#barcode", document.getElementById("invoiceNumber").value, {
   width:1.5, height:40, displayValue:false
 });
 
+/***********************
+ * ROWS
+ ***********************/
 function addRow(){
   const tr = document.createElement("tr");
 
-  const p = document.createElement("select");
-  products.forEach(v=>p.add(new Option(v,v)));
+  const p = document.createElement("input");
+  p.placeholder = "Product name";
+  p.onblur = () => checkNewProduct(p.value);
 
   const t = document.createElement("select");
   t.multiple = true;
@@ -132,8 +182,15 @@ function buildQty(container,select){
   });
 }
 
-function td(el){const d=document.createElement("td"); d.append(el); return d}
+function td(el){
+  const d=document.createElement("td");
+  d.append(el);
+  return d;
+}
 
+/***********************
+ * CALCS
+ ***********************/
 function calc(){
   let subtotal=0;
   document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
@@ -150,7 +207,50 @@ function calc(){
   document.getElementById("total").innerText="$"+(subtotal+tax).toFixed(2);
 }
 
+/***********************
+ * NEW DETECTION
+ ***********************/
+function checkNewCustomer(){
+  const name = customerName.value.trim();
+  if (name && !knownCustomers.includes(name)) {
+    pendingCustomer = name;
+    document.getElementById("newCustomerText").innerText = name;
+    document.getElementById("newCustomerModal").style.display="flex";
+    return true;
+  }
+  return false;
+}
+
+function checkNewProduct(name){
+  if (name && !knownProducts.includes(name)) {
+    pendingProduct = name;
+    document.getElementById("newProductText").innerText = name;
+    document.getElementById("newProductModal").style.display="flex";
+  }
+}
+
+function confirmNewCustomer(){
+  knownCustomers.push(pendingCustomer);
+  pendingCustomer = null;
+  closeModals();
+}
+
+function confirmNewProduct(){
+  knownProducts.push(pendingProduct);
+  pendingProduct = null;
+  closeModals();
+}
+
+function closeModals(){
+  document.querySelectorAll(".modal").forEach(m=>m.style.display="none");
+}
+
+/***********************
+ * PDF
+ ***********************/
 function generatePDF(){
+  if (checkNewCustomer()) return;
+
   const { jsPDF } = window.jspdf;
   const d = new jsPDF();
 
@@ -168,10 +268,13 @@ function generatePDF(){
 
   const rows=[];
   document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
-    const name=r.children[0].firstChild.value;
-    const types=[...r.children[1].firstChild.selectedOptions].map(o=>o.value).join(", ");
-    const qty=[...r.children[2].querySelectorAll("input")].map(i=>`${i.dataset.type}:${i.value}`).join(" ");
-    rows.push([name,types,qty,r.children[3].firstChild.value,r.children[4].innerText]);
+    rows.push([
+      r.children[0].firstChild.value,
+      [...r.children[1].firstChild.selectedOptions].map(o=>o.value).join(", "),
+      [...r.children[2].querySelectorAll("input")].map(i=>`${i.dataset.type}:${i.value}`).join(" "),
+      r.children[3].firstChild.value,
+      r.children[4].innerText
+    ]);
   });
 
   d.autoTable({
