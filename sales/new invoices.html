@@ -228,7 +228,7 @@ button { padding:8px 14px; margin-top:10px }
 <script>
 const API = "https://script.google.com/macros/s/AKfycbys580shBiRLtAW0jAYFoinwKJrycSJQyW8qy95nvLr7dxqOGtzI3e_h9QQn8-ULTT3/exec";
 const SALES_TAX_RATE = 0.06;
-const KEG_DEPOSIT = 30;
+const KEG_DEPOSIT_RATE = 30;
 
 let customerListData = [];
 let productData = {};      // { IPA: { Case: 120 } }
@@ -343,11 +343,12 @@ function handleTypeToggle(cb, qtyCol, priceCol, totalCol) {
     qty.dataset.type = type;
     qty.oninput = calc;
 
-    // PRICE
+    // PRICE (auto-filled, locked visually)
     const price = document.createElement("input");
     price.type = "number";
     price.readOnly = true;
     price.dataset.type = type;
+    price.dataset.auto = "true";
     price.style.background = "#f2f2f2";
     price.value = productData[product]?.[type] || 0;
 
@@ -370,80 +371,54 @@ function handleTypeToggle(cb, qtyCol, priceCol, totalCol) {
   calc();
 }
 
-
-
 /* ITEMS */
-function addRow(){
-  const tr=document.createElement("tr");
-const p = document.createElement("input");
-p.setAttribute("list", "productList");
-p.placeholder = "Start typing product...";
-p.oninput = () => {
-  if (p.value.length >= 2) {
-    checkNewProduct(p.value);
-  }
-  refreshPricesForRow(tr);
-};
+function addRow() {
+  const tr = document.createElement("tr");
 
-p.onchange = () => {
-  checkNewProduct(p.value);
-  refreshPricesForRow(tr);
-};
+  // PRODUCT
+  const productInput = document.createElement("input");
+  productInput.setAttribute("list", "productList");
+  productInput.placeholder = "Start typing product...";
+  productInput.onchange = () => {
+    checkNewProduct(productInput.value);
+    refreshPricesForRow(tr);
+  };
 
-
-
+  // TYPE CHECKBOXES
   const typesDiv = document.createElement("div");
-typesDiv.innerHTML = `
-  <label class="type-row">
-    <input type="checkbox" data-type="Case"> Case
-  </label>
-  <label class="type-row">
-    <input type="checkbox" data-type="Bottle"> Bottle
-  </label>
-  <label class="type-row">
-    <input type="checkbox" data-type="1/6 Keg"> 1/6 Keg
-  </label>
-  <label class="type-row">
-    <input type="checkbox" data-type="1/2 Keg"> 1/2 Keg
-  </label>
-`;
+  typesDiv.innerHTML = `
+    <label class="type-row"><input type="checkbox" data-type="Case"> Case</label>
+    <label class="type-row"><input type="checkbox" data-type="Bottle"> Bottle</label>
+    <label class="type-row"><input type="checkbox" data-type="1/6 Keg"> 1/6 Keg</label>
+    <label class="type-row"><input type="checkbox" data-type="1/2 Keg"> 1/2 Keg</label>
+  `;
 
+  // STACKED COLUMNS
+  const qtyCol = document.createElement("div");
+  qtyCol.className = "column-stack";
 
+  const priceCol = document.createElement("div");
+  priceCol.className = "column-stack";
 
-  const qtyContainer = document.createElement("div");
-qtyContainer.className = "qty-container";
+  const totalCol = document.createElement("div");
+  totalCol.className = "column-stack";
 
+  // WIRE CHECKBOXES
+  typesDiv.querySelectorAll("input[type=checkbox]").forEach(cb => {
+    cb.onchange = () => handleTypeToggle(cb, qtyCol, priceCol, totalCol);
+  });
 
-[p, typesDiv, qtyContainer, priceContainer, totalContainer].forEach(el => {
-  const td = document.createElement("td");
-  td.append(el);
-  tr.append(td);
-});
+  // APPEND TDS
+  [productInput, typesDiv, qtyCol, priceCol, totalCol].forEach(el => {
+    const td = document.createElement("td");
+    td.appendChild(el);
+    tr.appendChild(td);
+  });
 
-  const q=document.createElement("input");
-  q.type="number"; q.value=1; q.oninput=calc;
-
-const qtyContainer = document.createElement("div");
-qtyContainer.className = "column-stack";
-
-const priceContainer = document.createElement("div");
-priceContainer.className = "column-stack";
-
-const totalContainer = document.createElement("div");
-totalContainer.className = "column-stack";
-
-
-
-  const total=document.createElement("span"); total.innerText="$0.00";
-
-  [p, typesDiv, qtyContainer, price, total].forEach(e => {
-  const td = document.createElement("td");
-  td.append(e);
-  tr.append(td);
-});
-
-  document.querySelector("#itemsTable tbody").append(tr);
+  document.querySelector("#itemsTable tbody").appendChild(tr);
 }
+
+
 
 function confirmProduct() {
   const product = mpProduct.value.trim();
@@ -498,13 +473,12 @@ function confirmProduct() {
 
 function calc() {
   let subtotal = 0;
+  let kegDeposit = 0;
 
   document.querySelectorAll("#itemsTable tbody tr").forEach(row => {
     const qtyCol = row.children[2];
     const priceCol = row.children[3];
     const totalCol = row.children[4];
-
-    totalCol.innerHTML = "";
 
     qtyCol.querySelectorAll("input").forEach(qty => {
       const type = qty.dataset.type;
@@ -515,17 +489,25 @@ function calc() {
       const lineTotal = qty.value * price;
       subtotal += lineTotal;
 
-      const t = document.createElement("div");
-      t.innerText = "$" + lineTotal.toFixed(2);
-      totalCol.appendChild(t);
+      if (type.includes("Keg")) {
+        kegDeposit += qty.value * KEG_DEPOSIT_RATE;
+      }
+
+      const totalDiv = totalCol.querySelector(`[data-type="${type}"]`);
+      if (totalDiv) {
+        totalDiv.innerText = "$" + lineTotal.toFixed(2);
+      }
     });
   });
 
-  sub.innerText = "$" + subtotal.toFixed(2);
-  total.innerText = "$" + subtotal.toFixed(2);
+  keg.innerText = "$" + kegDeposit.toFixed(2);
+
+  const taxAmount = subtotal * SALES_TAX_RATE;
+  tax.innerText = "$" + taxAmount.toFixed(2);
+
+  const grandTotal = subtotal + taxAmount + kegDeposit;
+  total.innerText = "$" + grandTotal.toFixed(2);
 }
-
-
 
 /* FIX #2 — SAVE INVOICE */
 async function saveInvoice(){
@@ -536,16 +518,25 @@ const items = [];
 
 document.querySelectorAll("#itemsTable tbody tr").forEach(row => {
   const product = row.children[0].querySelector("input").value;
+  const qtyCol = row.children[2];
+  const priceCol = row.children[3];
 
-  row.children[2].querySelectorAll(".type-line").forEach(line => {
+  qtyCol.querySelectorAll("input").forEach(qty => {
+    const type = qty.dataset.type;
+    const price = Number(
+      priceCol.querySelector(`[data-type="${type}"]`)?.value || 0
+    );
+
     items.push({
       product,
-      type: line.dataset.type,
-      qty: Number(line.querySelector("input").value),
-      price: Number(row.children[3].querySelector("input").value)
+      type,
+      qty: Number(qty.value),
+      price,
+      lineTotal: qty.value * price
     });
   });
 });
+
 
   await fetch(API, {
   method: "POST",
@@ -569,15 +560,17 @@ document.querySelectorAll("#itemsTable tbody tr").forEach(row => {
 
 function generatePDF(){ alert("PDF logic unchanged"); }
 function emailInvoice(){ alert("Email logic unchanged"); }
-  function refreshPricesForRow(row) {
+function refreshPricesForRow(row) {
   const productName = row.children[0].querySelector("input").value;
   if (!productData[productName]) return;
 
-  const priceInput = row.children[3].querySelector("input");
+  const priceCol = row.children[3];
 
-  row.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
-    const type = cb.dataset.type;
-    if (productData[productName][type]) {
+  priceCol.querySelectorAll("input").forEach(priceInput => {
+    if (!priceInput.dataset.auto) return;
+
+    const type = priceInput.dataset.type;
+    if (productData[productName][type] !== undefined) {
       priceInput.value = productData[productName][type];
     }
   });
