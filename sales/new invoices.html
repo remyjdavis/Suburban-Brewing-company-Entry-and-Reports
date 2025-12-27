@@ -306,10 +306,28 @@ function confirmProduct() {
     return;
   }
 
-  console.log("Products to save:", productsToSave);
-
-  // TEMP: just close for now
+  Promise.all(
+  productsToSave.map(p =>
+    fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "saveProduct",
+        product: p.product,
+        type: p.type,
+        price: p.price
+      })
+    })
+  )
+)
+.then(() => {
   closeProduct();
+})
+.catch(err => {
+  console.error(err);
+  alert("Failed to save products");
+});
+
 }
 
 function calc(){
