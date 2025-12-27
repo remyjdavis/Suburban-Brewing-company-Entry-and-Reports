@@ -287,9 +287,11 @@ function handleTypeToggle(checkbox, container) {
 /* ITEMS */
 function addRow(){
   const tr=document.createElement("tr");
-
-  const p=document.createElement("input");
+const p = document.createElement("input");
+p.setAttribute("list", "productList");
+p.placeholder = "Start typing product...";
 p.onchange = () => checkNewProduct(p.value);
+
 
   const typesDiv = document.createElement("div");
 typesDiv.innerHTML = `
