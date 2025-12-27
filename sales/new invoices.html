@@ -214,14 +214,14 @@ function checkNewCustomer(v){
 }
 function checkNewProduct(value) {
   if (!value) return;
-
-  // existing product → do nothing
   if (productData[value]) return;
 
-  // new product → open modal
+  if (document.getElementById("productModal").style.display === "flex") return;
+
   mpProduct.value = value;
   document.getElementById("productModal").style.display = "flex";
 }
+
 
 
 /* FIX #1 — SAVE CUSTOMER VIA POST */
@@ -293,7 +293,18 @@ function addRow(){
 const p = document.createElement("input");
 p.setAttribute("list", "productList");
 p.placeholder = "Start typing product...";
-p.onchange = () => checkNewProduct(p.value);
+p.oninput = () => {
+  if (p.value.length >= 2) {
+    checkNewProduct(p.value);
+  }
+  refreshPricesForRow(tr);
+};
+
+p.onchange = () => {
+  checkNewProduct(p.value);
+  refreshPricesForRow(tr);
+};
+
 
 
   const typesDiv = document.createElement("div");
@@ -428,6 +439,22 @@ async function saveInvoice(){
 
 function generatePDF(){ alert("PDF logic unchanged"); }
 function emailInvoice(){ alert("Email logic unchanged"); }
+  function refreshPricesForRow(row) {
+  const productName = row.children[0].querySelector("input").value;
+  if (!productData[productName]) return;
+
+  const priceInput = row.children[3].querySelector("input");
+
+  row.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+    const type = cb.dataset.type;
+    if (productData[productName][type]) {
+      priceInput.value = productData[productName][type];
+    }
+  });
+
+  calc();
+}
+
 </script>
 
 </body>
