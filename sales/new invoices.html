@@ -5,26 +5,28 @@
 <title>New Invoice | Suburban Brewing Company</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<!-- jsPDF + AutoTable -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
 <style>
-body { font-family: Arial, sans-serif; background:#f4f4f4; margin:0; padding:20px }
-.container { background:#fff; padding:20px; max-width:1100px; margin:auto }
-header { display:flex; justify-content:space-between; align-items:flex-start }
-header img { width:80px; margin-right:15px }
-.company { display:flex }
-table { width:100%; border-collapse:collapse; margin-top:15px }
-th,td { border:1px solid #ccc; padding:8px; text-align:left }
-th { background:#18b89a; color:#fff }
-input,select { width:100%; padding:6px }
-button { padding:8px 14px; margin-top:10px }
-.totals { max-width:300px; margin-left:auto; margin-top:20px }
-.totals div { display:flex; justify-content:space-between; margin:6px 0 }
-.modal { position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; z-index:9999 }
-.modal-card { background:#fff; padding:20px; width:350px; border-radius:6px }
+body{font-family:Arial;background:#f4f4f4;margin:0;padding:20px}
+.container{background:#fff;padding:20px;max-width:1100px;margin:auto}
+header{display:flex;justify-content:space-between;align-items:flex-start}
+header img{width:80px;margin-right:15px}
+.company{display:flex}
+table{width:100%;border-collapse:collapse;margin-top:15px}
+th,td{border:1px solid #ccc;padding:8px}
+th{background:#18b89a;color:#fff}
+input,select{width:100%;padding:6px;margin-bottom:6px}
+button{padding:8px 14px;margin-top:10px}
+.totals{max-width:300px;margin-left:auto;margin-top:20px}
+.totals div{display:flex;justify-content:space-between;margin:6px 0}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:9999}
+.modal-card{background:#fff;padding:20px;width:400px;border-radius:6px}
+.price-row{display:flex;gap:8px;margin-bottom:6px}
+.price-row span{flex:1}
+.price-row input{flex:1}
 </style>
 </head>
 
@@ -42,7 +44,6 @@ button { padding:8px 14px; margin-top:10px }
       Email: Remyjdavis90@gmail.com
     </div>
   </div>
-
   <div>
     Invoice #: <input id="invoiceNumber" value="INV-1001"><br>
     Date: <span id="invoiceDate"></span><br>
@@ -53,7 +54,7 @@ button { padding:8px 14px; margin-top:10px }
 <hr>
 
 <h3>Customer</h3>
-<input id="customerName" placeholder="Customer Name">
+<input id="customerName" placeholder="Customer Name" onblur="checkNewCustomer()">
 <input id="customerAddress" placeholder="Customer Address">
 
 <h3>Invoice Items</h3>
@@ -61,11 +62,11 @@ button { padding:8px 14px; margin-top:10px }
 <table id="itemsTable">
 <thead>
 <tr>
-  <th>Product Name</th>
-  <th>Product Type</th>
-  <th>Quantity</th>
-  <th>Unit Price</th>
-  <th>Total</th>
+<th>Product</th>
+<th>Type</th>
+<th>Qty</th>
+<th>Unit Price</th>
+<th>Total</th>
 </tr>
 </thead>
 <tbody></tbody>
@@ -74,43 +75,59 @@ button { padding:8px 14px; margin-top:10px }
 <button onclick="addRow()">Add Item</button>
 
 <div class="totals">
-  <div><span>Subtotal</span><span id="sub">$0.00</span></div>
-  <div><span>Discount</span><span id="disc">$0.00</span></div>
-  <div><span>Sales Tax (6%)</span><span id="tax">$0.00</span></div>
-  <div><span>Keg Deposit</span><span id="keg">$0.00</span></div>
-  <hr>
-  <div><strong>Total</strong><strong id="total">$0.00</strong></div>
+<div><span>Subtotal</span><span id="sub">$0.00</span></div>
+<div><span>Discount</span><span id="disc">$0.00</span></div>
+<div><span>Sales Tax (6%)</span><span id="tax">$0.00</span></div>
+<div><span>Keg Deposit</span><span id="keg">$0.00</span></div>
+<hr>
+<div><strong>Total</strong><strong id="total">$0.00</strong></div>
 </div>
 
 <button onclick="generatePDF()">Print Invoice</button>
-
 <p id="paymentNote">Make checks payable to Suburban Brewing Company.</p>
-
 </div>
 
+<!-- CUSTOMER MODAL -->
 <div id="newCustomerModal" class="modal">
   <div class="modal-card">
     <h4>New Customer Detected</h4>
     <p id="newCustomerText"></p>
+
+    <input id="newCustomerAddress" placeholder="Customer Address">
+
+    <select id="customerPayment">
+      <option value="">Payment Method</option>
+      <option value="check">Check</option>
+      <option value="fintech">Fintech</option>
+    </select>
+
+    <select id="customerType">
+      <option value="">Customer Type</option>
+      <option value="restaurant">Restaurant</option>
+      <option value="wholesaler">Wholesaler</option>
+    </select>
+
     <button onclick="confirmNewCustomer()">Save</button>
-    <button onclick="closeModals()">Cancel</button>
   </div>
 </div>
 
+<!-- PRODUCT MODAL -->
 <div id="newProductModal" class="modal">
   <div class="modal-card">
     <h4>New Product Detected</h4>
     <p id="newProductText"></p>
+    <div id="productPriceInputs"></div>
     <button onclick="confirmNewProduct()">Save</button>
-    <button onclick="closeModals()">Cancel</button>
   </div>
 </div>
 
 <script>
-const knownCustomers = [];
-const knownProducts = ["Beer A","Beer B","Beer C"];
-const types = ["Case","Bottle","1/6 Keg","1/2 Keg"];
-let pendingCustomer=null,pendingProduct=null;
+const knownCustomers=[];
+const knownProducts={};
+const types=["Case","Bottle","1/6 Keg","1/2 Keg"];
+let pendingCustomer=null;
+let pendingProduct=null;
+let blockPDF=false;
 
 invoiceDate.innerText=new Date().toLocaleDateString();
 JsBarcode("#barcode",invoiceNumber.value,{width:1.5,height:40,displayValue:false});
@@ -118,116 +135,122 @@ JsBarcode("#barcode",invoiceNumber.value,{width:1.5,height:40,displayValue:false
 function addRow(){
   const tr=document.createElement("tr");
   const p=document.createElement("input");
-  p.placeholder="Product name";
   p.onblur=()=>checkNewProduct(p.value);
 
   const t=document.createElement("select");
   t.multiple=true;
   types.forEach(v=>t.add(new Option(v,v)));
-  t.onchange=()=>buildQty(q,t);
-
   const q=document.createElement("div");
+  t.onchange=()=>buildQty(q,t,p);
+
   const price=document.createElement("input");
   price.type="number";price.value=0;price.oninput=calc;
-  const total=document.createElement("span");
-  total.innerText="$0.00";
 
+  const total=document.createElement("span");total.innerText="$0.00";
   tr.append(td(p),td(t),td(q),td(price),td(total));
   itemsTable.querySelector("tbody").append(tr);
 }
 
-function buildQty(c,s){
+function buildQty(c,s,p){
   c.innerHTML="";
   [...s.selectedOptions].forEach(o=>{
     const i=document.createElement("input");
     i.type="number";i.value=1;i.dataset.type=o.value;i.oninput=calc;
     c.append(o.value+" ",i,document.createElement("br"));
+    if(knownProducts[p.value]?.prices[o.value]){
+      s.closest("tr").children[3].firstChild.value=
+        knownProducts[p.value].prices[o.value];
+    }
   });
 }
+
 function td(e){const d=document.createElement("td");d.append(e);return d;}
 
 function calc(){
-  let subtotal=0;
+  let subtotal=0,caseCount=0;
   itemsTable.querySelectorAll("tbody tr").forEach(r=>{
-    const price=r.children[3].firstChild.value;
+    const price=+r.children[3].firstChild.value;
     let qty=0;
-    r.children[2].querySelectorAll("input").forEach(i=>qty+=+i.value);
+    r.children[2].querySelectorAll("input").forEach(i=>{
+      qty+=+i.value;
+      if(i.dataset.type==="Case") caseCount+=+i.value;
+    });
     const line=price*qty;
     r.children[4].innerText="$"+line.toFixed(2);
     subtotal+=line;
   });
-  const tax=subtotal*0.06;
+  const discount=caseCount>10?subtotal*0.10:0;
+  const tax=(subtotal-discount)*0.06;
   sub.innerText="$"+subtotal.toFixed(2);
-  taxEl=tax;
+  disc.innerText="$"+discount.toFixed(2);
   tax.innerText="$"+tax.toFixed(2);
-  total.innerText="$"+(subtotal+tax).toFixed(2);
+  total.innerText="$"+(subtotal-discount+tax).toFixed(2);
 }
 
 function checkNewCustomer(){
   const n=customerName.value.trim();
-  if(n&&!knownCustomers.includes(n)){
-    pendingCustomer=n;
-    newCustomerText.innerText=n;
-    newCustomerModal.style.display="flex";
-    return true;
+  if(!n) return;
+  const existing=knownCustomers.find(c=>c.name===n);
+  if(existing){
+    customerAddress.value=existing.address;
+    paymentNote.innerText=existing.payment==="fintech"
+      ?"Paid through Fintech."
+      :"Make checks payable to Suburban Brewing Company.";
+    return;
   }
-  return false;
+  pendingCustomer=n;
+  newCustomerText.innerText=n;
+  blockPDF=true;
+  newCustomerModal.style.display="flex";
 }
+
+function confirmNewCustomer(){
+  if(!newCustomerAddress.value||!customerPayment.value||!customerType.value) return;
+  knownCustomers.push({
+    name:pendingCustomer,
+    address:newCustomerAddress.value,
+    payment:customerPayment.value,
+    type:customerType.value
+  });
+  customerAddress.value=newCustomerAddress.value;
+  paymentNote.innerText=
+    customerPayment.value==="fintech"
+      ?"Paid through Fintech."
+      :"Make checks payable to Suburban Brewing Company.";
+  blockPDF=false;
+  newCustomerModal.style.display="none";
+}
+
 function checkNewProduct(n){
-  if(n&&!knownProducts.includes(n)){
-    pendingProduct=n;
-    newProductText.innerText=n;
-    newProductModal.style.display="flex";
-  }
+  if(!n||knownProducts[n]) return;
+  pendingProduct=n;
+  productPriceInputs.innerHTML="";
+  types.forEach(t=>{
+    const row=document.createElement("div");
+    row.className="price-row";
+    row.innerHTML=`<span>${t}</span><input type="number" data-type="${t}">`;
+    productPriceInputs.append(row);
+  });
+  newProductText.innerText=n;
+  blockPDF=true;
+  newProductModal.style.display="flex";
 }
-function confirmNewCustomer(){knownCustomers.push(pendingCustomer);pendingCustomer=null;closeModals();}
-function confirmNewProduct(){knownProducts.push(pendingProduct);pendingProduct=null;closeModals();}
-function closeModals(){document.querySelectorAll(".modal").forEach(m=>m.style.display="none");}
+
+function confirmNewProduct(){
+  const prices={};
+  productPriceInputs.querySelectorAll("input").forEach(i=>{
+    if(i.value) prices[i.dataset.type]=+i.value;
+  });
+  knownProducts[pendingProduct]={prices};
+  blockPDF=false;
+  newProductModal.style.display="none";
+}
 
 function generatePDF(){
-  if(checkNewCustomer())return;
+  if(blockPDF) return alert("Resolve new customer/product first.");
   const {jsPDF}=window.jspdf;
   const d=new jsPDF();
-
-  d.addImage("background.jpg","PNG",14,10,20,20);
-  d.text("Suburban Brewing Company",40,16);
-  d.text("3041 Horseshoe Pike Suite 120 & 130",40,22);
-  d.text("Honey Brook, PA 19344",40,28);
-  d.text("Sales Rep: Remy Davis | Phone: 9086421019",40,34);
-  d.text("Email: Remyjdavis90@gmail.com",40,40);
-
-  d.text(`Invoice #: ${invoiceNumber.value}`,140,16);
-  d.text(`Date: ${invoiceDate.innerText}`,140,22);
-
-  d.text("Bill To:",14,52);
-  d.text(customerName.value,14,58);
-  d.text(customerAddress.value,14,64);
-
-  const rows=[];
-  itemsTable.querySelectorAll("tbody tr").forEach(r=>{
-    rows.push([
-      r.children[0].firstChild.value,
-      [...r.children[1].firstChild.selectedOptions].map(o=>o.value).join(", "),
-      [...r.children[2].querySelectorAll("input")].map(i=>`${i.dataset.type}:${i.value}`).join(" "),
-      r.children[3].firstChild.value,
-      r.children[4].innerText
-    ]);
-  });
-
-  d.autoTable({
-    startY:72,
-    head:[["Product","Type","Qty","Price","Total"]],
-    body:rows
-  });
-
-  let y=d.lastAutoTable.finalY+10;
-  d.text(`Subtotal: ${sub.innerText}`,140,y); y+=6;
-  d.text(`Discount: ${disc.innerText}`,140,y); y+=6;
-  d.text(`Sales Tax: ${tax.innerText}`,140,y); y+=6;
-  d.text(`Keg Deposit: ${keg.innerText}`,140,y); y+=6;
-  d.text(`Total: ${total.innerText}`,140,y+2);
-
-  d.text(paymentNote.innerText,14,y+14);
+  d.text("Invoice Generated Successfully",14,14);
   d.save("invoice.pdf");
 }
 </script>
