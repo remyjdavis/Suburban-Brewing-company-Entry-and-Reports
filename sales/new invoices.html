@@ -12,18 +12,18 @@
 <style>
 body{font-family:Arial;background:#f4f4f4;margin:0;padding:20px}
 .container{background:#fff;padding:20px;max-width:1100px;margin:auto}
-header{display:flex;justify-content:space-between;align-items:flex-start}
-header img{width:80px;margin-right:15px}
+header{display:flex;justify-content:space-between}
 .company{display:flex}
+header img{width:80px;margin-right:15px}
 table{width:100%;border-collapse:collapse;margin-top:15px}
 th,td{border:1px solid #ccc;padding:8px}
 th{background:#18b89a;color:#fff}
-input,select{width:100%;padding:6px;margin-bottom:6px}
+input,select{width:100%;padding:6px}
 button{padding:8px 14px;margin-top:10px}
-.totals{max-width:300px;margin-left:auto;margin-top:20px}
+.totals{max-width:320px;margin-left:auto;margin-top:20px}
 .totals div{display:flex;justify-content:space-between;margin:6px 0}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:9999}
-.modal-card{background:#fff;padding:20px;width:400px;border-radius:6px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center}
+.modal-card{background:#fff;padding:20px;width:420px;border-radius:6px}
 .price-row{display:flex;gap:8px;margin-bottom:6px}
 .price-row span{flex:1}
 .price-row input{flex:1}
@@ -40,12 +40,12 @@ button{padding:8px 14px;margin-top:10px}
       <strong>Suburban Brewing Company</strong><br>
       3041 Horseshoe Pike Suite 120 & 130<br>
       Honey Brook, PA 19344<br>
-      Sales Rep: Remy Davis | Phone: 9086421019<br>
-      Email: Remyjdavis90@gmail.com
+      Sales Rep: Remy Davis | 908-642-1019<br>
+      Remyjdavis90@gmail.com
     </div>
   </div>
   <div>
-    Invoice #: <input id="invoiceNumber" value="INV-1001"><br>
+    Invoice #: <span id="invoiceNumber"></span><br>
     Date: <span id="invoiceDate"></span><br>
     <svg id="barcode"></svg>
   </div>
@@ -58,14 +58,13 @@ button{padding:8px 14px;margin-top:10px}
 <input id="customerAddress" placeholder="Customer Address">
 
 <h3>Invoice Items</h3>
-
 <table id="itemsTable">
 <thead>
 <tr>
 <th>Product</th>
 <th>Type</th>
 <th>Qty</th>
-<th>Unit Price</th>
+<th>Price</th>
 <th>Total</th>
 </tr>
 </thead>
@@ -77,7 +76,7 @@ button{padding:8px 14px;margin-top:10px}
 <div class="totals">
 <div><span>Subtotal</span><span id="sub">$0.00</span></div>
 <div><span>Discount</span><span id="disc">$0.00</span></div>
-<div><span>Sales Tax (6%)</span><span id="tax">$0.00</span></div>
+<div><span>Sales Tax</span><span id="tax">$0.00</span></div>
 <div><span>Keg Deposit</span><span id="keg">$0.00</span></div>
 <hr>
 <div><strong>Total</strong><strong id="total">$0.00</strong></div>
@@ -85,81 +84,150 @@ button{padding:8px 14px;margin-top:10px}
 
 <button onclick="generatePDF()">Print Invoice</button>
 <p id="paymentNote">Make checks payable to Suburban Brewing Company.</p>
+
 </div>
 
 <!-- CUSTOMER MODAL -->
-<div id="newCustomerModal" class="modal">
-  <div class="modal-card">
-    <h4>New Customer Detected</h4>
-    <p id="newCustomerText"></p>
-
-    <input id="newCustomerAddress" placeholder="Customer Address">
-
-    <select id="customerPayment">
-      <option value="">Payment Method</option>
-      <option value="check">Check</option>
-      <option value="fintech">Fintech</option>
-    </select>
-
-    <select id="customerType">
-      <option value="">Customer Type</option>
-      <option value="restaurant">Restaurant</option>
-      <option value="wholesaler">Wholesaler</option>
-    </select>
-
-    <button onclick="confirmNewCustomer()">Save</button>
-  </div>
+<div id="customerModal" class="modal">
+<div class="modal-card">
+<h4>New Customer</h4>
+<input id="modalAddress" placeholder="Address">
+<select id="modalPayment">
+<option value="">Payment</option>
+<option value="check">Check</option>
+<option value="fintech">Fintech</option>
+</select>
+<select id="modalType">
+<option value="">Type</option>
+<option value="restaurant">Restaurant</option>
+<option value="wholesaler">Wholesaler</option>
+</select>
+<button onclick="saveCustomer()">Save</button>
+</div>
 </div>
 
 <!-- PRODUCT MODAL -->
-<div id="newProductModal" class="modal">
-  <div class="modal-card">
-    <h4>New Product Detected</h4>
-    <p id="newProductText"></p>
-    <div id="productPriceInputs"></div>
-    <button onclick="confirmNewProduct()">Save</button>
-  </div>
+<div id="productModal" class="modal">
+<div class="modal-card">
+<h4>New Product</h4>
+<div id="priceInputs"></div>
+<button onclick="saveProduct()">Save</button>
+</div>
 </div>
 
 <script>
-const knownCustomers=[];
-const knownProducts={};
-const types=["Case","Bottle","1/6 Keg","1/2 Keg"];
-let pendingCustomer=null;
-let pendingProduct=null;
-let blockPDF=false;
+const KEG_DEPOSIT = 30;
+const TYPES = ["Case","Bottle","1/6 Keg","1/2 Keg"];
 
-invoiceDate.innerText=new Date().toLocaleDateString();
-JsBarcode("#barcode",invoiceNumber.value,{width:1.5,height:40,displayValue:false});
+let customers = JSON.parse(localStorage.getItem("customers")||"[]");
+let products = JSON.parse(localStorage.getItem("products")||"{}");
+let invoiceNum = +localStorage.getItem("invoiceNum")||1001;
+
+let activeCustomer=null;
+let pendingProduct=null;
+
+invoiceNumber.innerText = invoiceNum;
+invoiceDate.innerText = new Date().toLocaleDateString();
+JsBarcode("#barcode",invoiceNum,{displayValue:false});
+
+function saveState(){
+  localStorage.setItem("customers",JSON.stringify(customers));
+  localStorage.setItem("products",JSON.stringify(products));
+  localStorage.setItem("invoiceNum",invoiceNum);
+}
+
+function checkNewCustomer(){
+  const n=customerName.value.trim();
+  if(!n) return;
+  const c=customers.find(x=>x.name===n);
+  if(c){
+    activeCustomer=c;
+    customerAddress.value=c.address;
+    paymentNote.innerText=c.payment==="fintech"
+      ?"Paid through Fintech"
+      :"Make checks payable to Suburban Brewing Company";
+    calc();
+    return;
+  }
+  customerModal.style.display="flex";
+}
+
+function saveCustomer(){
+  const c={
+    name:customerName.value,
+    address:modalAddress.value,
+    payment:modalPayment.value,
+    type:modalType.value
+  };
+  customers.push(c);
+  activeCustomer=c;
+  customerAddress.value=c.address;
+  paymentNote.innerText=c.payment==="fintech"
+    ?"Paid through Fintech"
+    :"Make checks payable to Suburban Brewing Company";
+  saveState();
+  customerModal.style.display="none";
+}
 
 function addRow(){
   const tr=document.createElement("tr");
   const p=document.createElement("input");
-  p.onblur=()=>checkNewProduct(p.value);
+  p.onblur=()=>detectProduct(p.value);
 
   const t=document.createElement("select");
   t.multiple=true;
-  types.forEach(v=>t.add(new Option(v,v)));
+  TYPES.forEach(v=>t.add(new Option(v,v)));
+
   const q=document.createElement("div");
-  t.onchange=()=>buildQty(q,t,p);
+  t.onchange=()=>buildQty(q,t,p,tr);
 
   const price=document.createElement("input");
-  price.type="number";price.value=0;price.oninput=calc;
+  price.type="number"; price.oninput=calc;
 
-  const total=document.createElement("span");total.innerText="$0.00";
+  const total=document.createElement("span");
+
   tr.append(td(p),td(t),td(q),td(price),td(total));
   itemsTable.querySelector("tbody").append(tr);
 }
 
-function buildQty(c,s,p){
+function detectProduct(name){
+  if(!name || products[name]) return;
+  pendingProduct=name;
+  priceInputs.innerHTML="";
+  TYPES.forEach(t=>{
+    priceInputs.innerHTML+=`
+      <div class="price-row">
+        <span>${t}</span>
+        <input data-type="${t}" placeholder="Restaurant">
+        <input data-type="${t}" placeholder="Wholesaler">
+      </div>`;
+  });
+  productModal.style.display="flex";
+}
+
+function saveProduct(){
+  const prices={restaurant:{},wholesaler:{}};
+  priceInputs.querySelectorAll("input").forEach(i=>{
+    const type=i.dataset.type;
+    if(i.placeholder==="Restaurant") prices.restaurant[type]=+i.value||0;
+    else prices.wholesaler[type]=+i.value||0;
+  });
+  products[pendingProduct]={prices};
+  saveState();
+  productModal.style.display="none";
+}
+
+function buildQty(c,s,p,tr){
   c.innerHTML="";
   [...s.selectedOptions].forEach(o=>{
     const i=document.createElement("input");
-    i.type="number";i.value=1;i.dataset.type=o.value;i.oninput=calc;
+    i.type="number"; i.value=1;
+    i.dataset.type=o.value;
+    i.oninput=calc;
     c.append(o.value+" ",i,document.createElement("br"));
-    if(knownProducts[p.value]?.prices[o.value]){
-      s.closest("tr").children[3].firstChild.value=
-        knownProducts[p.value].prices[o.value];
+    if(activeCustomer && products[p.value]){
+      tr.children[3].firstChild.value=
+        products[p.value].prices[activeCustomer.type][o.value]||0;
     }
   });
 }
@@ -167,91 +235,43 @@ function buildQty(c,s,p){
 function td(e){const d=document.createElement("td");d.append(e);return d;}
 
 function calc(){
-  let subtotal=0,caseCount=0;
+  let sub=0,cases=0,kegs=0;
   itemsTable.querySelectorAll("tbody tr").forEach(r=>{
-    const price=+r.children[3].firstChild.value;
     let qty=0;
     r.children[2].querySelectorAll("input").forEach(i=>{
       qty+=+i.value;
-      if(i.dataset.type==="Case") caseCount+=+i.value;
+      if(i.dataset.type==="Case") cases+=+i.value;
+      if(i.dataset.type.includes("Keg")) kegs+=+i.value;
     });
-    const line=price*qty;
+    const line=qty*(+r.children[3].firstChild.value||0);
     r.children[4].innerText="$"+line.toFixed(2);
-    subtotal+=line;
+    sub+=line;
   });
-  const discount=caseCount>10?subtotal*0.10:0;
-  const tax=(subtotal-discount)*0.06;
-  sub.innerText="$"+subtotal.toFixed(2);
-  disc.innerText="$"+discount.toFixed(2);
-  tax.innerText="$"+tax.toFixed(2);
-  total.innerText="$"+(subtotal-discount+tax).toFixed(2);
-}
 
-function checkNewCustomer(){
-  const n=customerName.value.trim();
-  if(!n) return;
-  const existing=knownCustomers.find(c=>c.name===n);
-  if(existing){
-    customerAddress.value=existing.address;
-    paymentNote.innerText=existing.payment==="fintech"
-      ?"Paid through Fintech."
-      :"Make checks payable to Suburban Brewing Company.";
-    return;
-  }
-  pendingCustomer=n;
-  newCustomerText.innerText=n;
-  blockPDF=true;
-  newCustomerModal.style.display="flex";
-}
+  const disc = cases>10 ? sub*0.10 : 0;
 
-function confirmNewCustomer(){
-  if(!newCustomerAddress.value||!customerPayment.value||!customerType.value) return;
-  knownCustomers.push({
-    name:pendingCustomer,
-    address:newCustomerAddress.value,
-    payment:customerPayment.value,
-    type:customerType.value
-  });
-  customerAddress.value=newCustomerAddress.value;
-  paymentNote.innerText=
-    customerPayment.value==="fintech"
-      ?"Paid through Fintech."
-      :"Make checks payable to Suburban Brewing Company.";
-  blockPDF=false;
-  newCustomerModal.style.display="none";
-}
+  /* ✅ CORRECT TAX RULE */
+  const tax =
+    activeCustomer?.type === "restaurant"
+      ? (sub - disc) * 0.06
+      : 0;
 
-function checkNewProduct(n){
-  if(!n||knownProducts[n]) return;
-  pendingProduct=n;
-  productPriceInputs.innerHTML="";
-  types.forEach(t=>{
-    const row=document.createElement("div");
-    row.className="price-row";
-    row.innerHTML=`<span>${t}</span><input type="number" data-type="${t}">`;
-    productPriceInputs.append(row);
-  });
-  newProductText.innerText=n;
-  blockPDF=true;
-  newProductModal.style.display="flex";
-}
+  const keg = kegs * KEG_DEPOSIT;
 
-function confirmNewProduct(){
-  const prices={};
-  productPriceInputs.querySelectorAll("input").forEach(i=>{
-    if(i.value) prices[i.dataset.type]=+i.value;
-  });
-  knownProducts[pendingProduct]={prices};
-  blockPDF=false;
-  newProductModal.style.display="none";
+  document.getElementById("sub").innerText="$"+sub.toFixed(2);
+  document.getElementById("disc").innerText="$"+disc.toFixed(2);
+  document.getElementById("tax").innerText="$"+tax.toFixed(2);
+  document.getElementById("keg").innerText="$"+keg.toFixed(2);
+  document.getElementById("total").innerText="$"+(sub-disc+tax+keg).toFixed(2);
 }
 
 function generatePDF(){
-  if(blockPDF) return alert("Resolve new customer/product first.");
   const {jsPDF}=window.jspdf;
   const d=new jsPDF();
-  d.text("Invoice Generated Successfully",14,14);
+  d.text("Invoice #"+invoiceNum,14,14);
   d.save("invoice.pdf");
+  invoiceNum++;
+  saveState();
 }
 </script>
 </body>
