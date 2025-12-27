@@ -4,432 +4,219 @@
   <meta charset="UTF-8" />
   <title>New Invoice | Suburban Brewing Company</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
-  <!-- Include jsPDF Library -->
+
+  <!-- jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-  <!-- Include jsPDF autoTable Plugin -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.22/jspdf.plugin.autotable.min.js"></script>
-
-  <!-- Include jsBarcode -->
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
+  <!-- jsPDF AutoTable -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+  <!-- Barcode -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 
   <style>
-    /* General Styles */
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-    }
-
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
     .topbar {
-      background: #ffffff;
-      border-bottom: 1px solid #e5e7eb;
-      padding: 8px 24px;
       display: flex;
       align-items: center;
-      justify-content: flex-start;
-      font-size: 12px;
-    }
-
-    .brand-container {
-      display: flex;
-      align-items: center;
-      font-size: 12px;
-    }
-
-    .logo {
-      height: 40px;
-      width: auto;
-      margin-right: 10px;
-    }
-
-    .company-details {
-      color: #6b7280;
-      margin-left: 5px;
-    }
-
-    .company-details p {
-      margin: 0;
-      line-height: 1.2;
-    }
-
-    .topbar h2 {
-      font-size: 20px;
-      font-weight: 500;
-      color: #6b7280;
-      margin-left: auto;
-    }
-
-    .section h2 {
-      font-size: 18px;
-      margin-top: 0;
-      font-weight: 600;
-    }
-
-    .invoice-details {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end; 
-      margin-bottom: 20px;
-    }
-
-    .invoice-details input {
-      text-align: right;
-      width: 200px;
-      margin-bottom: 10px;
-    }
-
-    .invoice-summary {
-      font-weight: bold;
-    }
-
-    #customerSearch {
-      width: 100%;
-      padding: 12px;
-      margin-bottom: 15px;
-      font-size: 16px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-    }
-
-    th, td {
-      padding: 12px;
-      text-align: right;
-      border: 1px solid #ddd;
-    }
-
-    th {
-      background-color: #f4f4f4;
-    }
-
-    td input, td select {
-      width: 100%;
-      padding: 8px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-    }
-
-    .add-item-button {
-      background-color: #4CAF50;
-      color: white;
+      border-bottom: 1px solid #ddd;
       padding: 10px 20px;
-      border: none;
-      cursor: pointer;
-      border-radius: 6px;
-      margin-top: 10px;
     }
-
-    .add-item-button:hover {
-      background-color: #45a049;
-    }
-
-    #totalSummary {
-      margin-top: 20px;
-    }
-
-    .buttons {
-      margin-top: 20px;
-    }
-
-    .bottom-message {
-      margin-top: 40px;
-      font-style: italic;
-    }
+    .logo { height: 40px; margin-right: 12px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background: #1abc9c; color: white; }
+    select, input { width: 100%; }
+    .quantity-inputs div { margin-bottom: 4px; }
+    .actions { margin-top: 20px; }
   </style>
 </head>
 
 <body>
 
-  <header class="topbar">
-    <div class="brand-container">
-      <img src="../sales/background.jpg" alt="Company Logo" class="logo">
-      <div class="company-details">
-        <p>Suburban Brewing Company</p>
-        <p>3041 Horseshoe Pike Suite 120 & 130</p>
-        <p>Honey Brook, PA 19344</p>
-        <p>Sales Rep: Remy Davis | Phone: 9086421019</p>
-        <p>Email: Remyjdavis90@gmail.com</p>
-      </div>
-    </div>
-    <h2>New Invoice</h2>
-  </header>
+<!-- HEADER -->
+<div class="topbar">
+  <img src="../sales/background.jpg" class="logo">
+  <div>
+    <strong>Suburban Brewing Company</strong><br>
+    3041 Horseshoe Pike Suite 120 & 130<br>
+    Honey Brook, PA 19344<br>
+    Sales Rep: Remy Davis | Phone: 9086421019<br>
+    Email: Remyjdavis90@gmail.com
+  </div>
+  <div style="margin-left:auto;text-align:right">
+    <div><strong>Invoice #</strong></div>
+    <input id="invoiceNumber" readonly>
+    <div id="invoiceDate"></div>
+    <svg id="barcode"></svg>
+  </div>
+</div>
 
-  <section class="content">
-    <!-- Invoice Details Section -->
-    <div class="section">
-      <h2>Invoice Details</h2>
-      <div class="invoice-details">
-        <label>Invoice #</label>
-        <input type="text" id="invoiceNumber" value="" />
+<!-- ITEMS -->
+<h3 style="padding:10px">Invoice Items</h3>
 
-        <!-- Barcode -->
-        <div id="barcode"></div>
+<table id="invoiceItemsTable">
+  <thead>
+    <tr>
+      <th>Product Name</th>
+      <th>Product Type</th>
+      <th>Quantity</th>
+      <th>Unit Price</th>
+      <th>Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>
+        <select class="product-name">
+          <option>Beer A</option>
+          <option>Beer B</option>
+          <option>Beer C</option>
+        </select>
+      </td>
+      <td>
+        <select multiple class="product-type" onchange="updateQuantities(this)">
+          <option>Case</option>
+          <option>Bottle</option>
+          <option>1/6 Keg</option>
+          <option>1/2 Keg</option>
+        </select>
+      </td>
+      <td class="quantity-cell">
+        <div class="quantity-inputs"></div>
+      </td>
+      <td>
+        <input type="number" class="unit-price" value="0" onchange="recalc()">
+      </td>
+      <td class="line-total">$0.00</td>
+    </tr>
+  </tbody>
+</table>
 
-        <!-- Invoice Date -->
-        <div class="invoice-date" id="invoiceDate"></div>
-      </div>
-    </div>
+<button onclick="addRow()">Add Item</button>
 
-    <!-- Customer Search Section -->
-    <div class="section">
-      <h2>Search for Customer</h2>
-      <input type="text" id="customerSearch" placeholder="Enter customer name or email" />
-      <button id="searchButton">Search</button>
-      <button id="addNewCustomer" style="display:none;">Add New Customer</button>
-    </div>
+<!-- TOTALS -->
+<div style="margin:20px">
+  Subtotal: $<span id="subtotal">0.00</span><br>
+  Sales Tax (6%): $<span id="tax">0.00</span><br>
+  Discount: $<span id="discount">0.00</span><br>
+  Keg Deposit: $<span id="keg">0.00</span><br>
+  <strong>Total: $<span id="finalTotal">0.00</span></strong>
+</div>
 
-    <!-- Invoice Items Section -->
-    <div class="section">
-      <h2>Invoice Items</h2>
-      <table id="invoiceItemsTable">
-        <thead>
-          <tr>
-            <th>Product Name</th>
-            <th>Product Type</th>
-            <th>Quantity</th>
-            <th>Unit Price</th>
-            <th>Total</th>
-          </tr>
-        </thead>
-        <tbody id="invoiceItemsBody">
-          <!-- Rows will be dynamically inserted here -->
-        </tbody>
-      </table>
-      <button class="add-item-button" id="addItemButton">Add Item</button>
-    </div>
+<!-- ACTIONS -->
+<div class="actions">
+  <button onclick="savePDF()">Save Invoice</button>
+  <button onclick="printPDF()">Print Invoice</button>
+</div>
 
-    <!-- Invoice Summary Section -->
-    <div id="totalSummary">
-      <p><strong>Subtotal:</strong> $<span id="subtotal">0.00</span></p>
-      <p><strong>Discount:</strong> $<span id="discount">0.00</span></p>
-      <p><strong>Sales Tax (6%):</strong> $<span id="salesTax">0.00</span></p>
-      <p><strong>Keg Deposit:</strong> $<span id="kegDeposit">0.00</span></p>
-      <p><strong>Total (after tax & discount):</strong> $<span id="finalTotal">0.00</span></p>
-    </div>
+<script>
+const { jsPDF } = window.jspdf;
+const customerType = "Restaurant"; // already established logic
 
-    <!-- Action Buttons -->
-    <div class="buttons">
-      <button onclick="saveInvoice()">Save Invoice</button>
-      <button onclick="printInvoice()">Print Invoice</button>
-      <button onclick="sendInvoiceEmail()">Send Invoice via Email</button>
-    </div>
+/* INIT */
+const inv = "INV-" + Math.floor(Math.random()*1000000);
+invoiceNumber.value = inv;
+invoiceDate.textContent = new Date().toLocaleDateString();
+JsBarcode("#barcode", inv, { displayValue:false });
 
-    <!-- Bottom Message Section Based on Customer Type -->
-    <div class="bottom-message" id="bottomMessage">
-      <!-- Dynamically set this message based on customer type -->
-    </div>
-  </section>
+/* DYNAMIC QUANTITIES */
+function updateQuantities(sel) {
+  const cell = sel.closest("tr").querySelector(".quantity-inputs");
+  cell.innerHTML = "";
+  Array.from(sel.selectedOptions).forEach(o=>{
+    const d=document.createElement("div");
+    d.innerHTML=`${o.textContent}: <input type="number" value="1" onchange="recalc()">`;
+    cell.appendChild(d);
+  });
+  recalc();
+}
 
-  <script>
-    const { jsPDF } = window.jspdf;
+/* ADD ROW */
+function addRow() {
+  const t=document.querySelector("#invoiceItemsTable tbody");
+  t.insertAdjacentHTML("beforeend", t.rows[0].outerHTML);
+}
 
-    // Example customer type (this would typically be set based on customer search or selection)
-    let customerType = 'Restaurant'; // or 'Other' for example purposes
-
-    // Generate Invoice Number and Date
-    window.onload = function() {
-      generateInvoiceNumber();
-      document.getElementById('invoiceDate').textContent = new Date().toLocaleDateString();
-      setBottomMessage(customerType);
-    };
-
-    // Function to generate a unique invoice number
-    function generateInvoiceNumber() {
-      const invoiceNumber = 'INV-' + Math.floor(Math.random() * 1000000);
-      document.getElementById('invoiceNumber').value = invoiceNumber;
-
-      // Generate the barcode for the invoice number
-      JsBarcode("#barcode", invoiceNumber, {
-        format: "CODE128",
-        displayValue: true,
-        fontSize: 18
-      });
-    }
-
-    // Function to set the bottom message based on the customer type
-    function setBottomMessage(type) {
-      const message = type === 'Restaurant' 
-        ? 'Make checks payable to Suburban Brewing Company.' 
-        : 'Paid through Fintech.';
-      document.getElementById('bottomMessage').textContent = message;
-    }
-
-    // Add product item to the invoice table
-    document.getElementById('addItemButton').addEventListener('click', function() {
-      const table = document.getElementById('invoiceItemsBody');
-      const productName = "Beer A"; // Example product name, update based on selected product
-      const newRow = table.insertRow();
-      newRow.innerHTML = `
-        <td class="product-name">
-          <select class="product-name-select">
-            <option>Beer A</option>
-            <option>Beer B</option>
-            <option>Beer C</option>
-          </select>
-        </td>
-        <td>
-          <select multiple class="product-type" onchange="updateQuantityInputs(this)">
-            <option>Case</option><option>Bottle</option><option>1/6 Keg</option><option>1/2 Keg</option>
-          </select>
-        </td>
-        <td>
-          <div class="quantity-inputs"></div>
-        </td>
-        <td><input type="number" min="1" value="1" class="unit-price" /></td>
-        <td><span class="total-price">$0.00</span></td>
-      `;
+/* RECALC TOTALS */
+function recalc() {
+  let subtotal=0, keg=0;
+  document.querySelectorAll("tbody tr").forEach(r=>{
+    const price=+r.querySelector(".unit-price").value||0;
+    let rowTotal=0;
+    r.querySelectorAll(".quantity-inputs input").forEach(i=>{
+      rowTotal+=price*(+i.value||0);
     });
+    if ([...r.querySelectorAll(".product-type option:checked")]
+        .some(o=>o.textContent.includes("Keg"))) keg+=30;
+    r.querySelector(".line-total").textContent="$"+rowTotal.toFixed(2);
+    subtotal+=rowTotal;
+  });
+  const tax = customerType==="Restaurant" ? subtotal*0.06 : 0;
+  subtotalEl.textContent=subtotal.toFixed(2);
+  taxEl.textContent=tax.toFixed(2);
+  discount.textContent="0.00";
+  kegEl.textContent=keg.toFixed(2);
+  finalTotal.textContent=(subtotal+tax+keg).toFixed(2);
+}
 
-    // Update the quantity inputs for each selected product type
-    function updateQuantityInputs(selectElement) {
-      const quantityContainer = selectElement.closest('td').nextElementSibling.querySelector('.quantity-inputs');
-      quantityContainer.innerHTML = ''; // Clear existing quantity inputs
+const subtotalEl=subtotal, taxEl=tax, kegEl=keg;
 
-      // Get all the selected options
-      const selectedOptions = Array.from(selectElement.selectedOptions);
-      selectedOptions.forEach(option => {
-        const inputDiv = document.createElement('div');
-        const label = document.createElement('label');
-        label.textContent = `Quantity for ${option.textContent}:`;
-        const input = document.createElement('input');
-        input.type = 'number';
-        input.min = 1;
-        input.value = 1; // default value
-        input.addEventListener('input', updateTotal); // Bind event for total calculation
-        inputDiv.appendChild(label);
-        inputDiv.appendChild(input);
-        quantityContainer.appendChild(inputDiv);
-      });
-    }
+/* PDF */
+function buildPDF() {
+  const doc=new jsPDF();
+  const logo=document.querySelector(".logo");
 
-    // Update the total for the invoice based on quantity and price
-    function updateTotal() {
-      const row = this.closest('tr');
-      const unitPrice = parseFloat(row.querySelector('.unit-price').value);
-      const quantityInputs = row.querySelectorAll('.quantity-inputs input');
-      
-      let total = 0;
-      quantityInputs.forEach(input => {
-        const quantity = parseInt(input.value) || 0;
-        total += quantity * unitPrice;
-      });
+  doc.addImage(logo,"JPEG",15,10,30,30);
+  doc.text("Suburban Brewing Company",50,15);
+  doc.text(`Invoice #: ${inv}`,150,15);
+  doc.text(`Date: ${invoiceDate.textContent}`,150,22);
 
-      row.querySelector('.total-price').textContent = `$${total.toFixed(2)}`;
-      updateInvoiceSummary();
-    }
+  const bc=document.createElement("canvas");
+  JsBarcode(bc,inv,{displayValue:false});
+  doc.addImage(bc,"PNG",150,30,45,14);
 
-    // Update the invoice summary with subtotals, discounts, tax, and total
-    function updateInvoiceSummary() {
-      let subtotal = 0;
-      let caseQuantity = 0;
+  const rows=[];
+  document.querySelectorAll("tbody tr").forEach(r=>{
+    const name=r.querySelector(".product-name").value;
+    const price=r.querySelector(".unit-price").value;
+    const qtyInputs=r.querySelectorAll(".quantity-inputs input");
+    const types=r.querySelectorAll(".product-type option:checked");
+    types.forEach((t,i)=>{
+      rows.push([
+        name,
+        t.textContent,
+        qtyInputs[i]?.value||0,
+        price,
+        r.querySelector(".line-total").textContent
+      ]);
+    });
+  });
 
-      const rows = document.querySelectorAll('#invoiceItemsTable tbody tr');
-      rows.forEach(row => {
-        const total = parseFloat(row.querySelector('.total-price').textContent.replace('$', '')) || 0;
-        subtotal += total;
+  doc.autoTable({
+    startY:55,
+    head:[["Product","Type","Qty","Price","Total"]],
+    body:rows
+  });
 
-        const productType = Array.from(row.querySelectorAll('select option:checked'))
-                                  .map(option => option.textContent);
-        caseQuantity += productType.filter(type => type === "Case").length;
-      });
+  let y=doc.lastAutoTable.finalY+10;
+  doc.text(`Total: $${finalTotal.textContent}`,150,y);
 
-      let discount = 0;
-      if (caseQuantity >= 10) {
-        discount = subtotal * 0.1;
-      }
+  doc.text(
+    customerType==="Restaurant"
+      ?"Make checks payable to Suburban Brewing Company."
+      :"Paid through Fintech.",
+    15,y+20
+  );
 
-      let salesTax = subtotal * 0.06;
-      const kegDeposit = caseQuantity > 0 ? 30 : 0;
+  return doc;
+}
 
-      const finalTotal = subtotal - discount + salesTax + kegDeposit;
+function savePDF(){ buildPDF().save(inv+".pdf"); }
+function printPDF(){
+  const p=buildPDF();
+  p.autoPrint();
+  window.open(p.output("bloburl"));
+}
+</script>
 
-      document.getElementById('subtotal').textContent = subtotal.toFixed(2);
-      document.getElementById('discount').textContent = discount.toFixed(2);
-      document.getElementById('salesTax').textContent = salesTax.toFixed(2);
-      document.getElementById('kegDeposit').textContent = kegDeposit.toFixed(2);
-      document.getElementById('finalTotal').textContent = finalTotal.toFixed(2);
-    }
-
-    // Generate the PDF
-    function generatePDF() {
-      const doc = new jsPDF();
-      const invoiceNumber = document.getElementById('invoiceNumber').value;
-      const invoiceDate = document.getElementById('invoiceDate').textContent;
-      const finalTotal = document.getElementById('finalTotal').textContent;
-
-      doc.setFontSize(20);
-      doc.text("Invoice", 20, 20);
-
-      doc.setFontSize(12);
-      doc.text("Suburban Brewing Company", 20, 30);
-      doc.text("3041 Horseshoe Pike Suite 120 & 130", 20, 35);
-      doc.text("Honey Brook, PA 19344", 20, 40);
-      doc.text("Sales Rep: Remy Davis | Phone: 9086421019", 20, 45);
-      doc.text("Email: Remyjdavis90@gmail.com", 20, 50);
-      doc.text(`Invoice #: ${invoiceNumber}`, 150, 30);
-      doc.text(`Date: ${invoiceDate}`, 150, 35);
-
-      // Add the barcode below the invoice number
-      doc.addImage(generateBarcodeImage(invoiceNumber), 'PNG', 150, 45, 60, 20);
-
-      // Adding Table from HTML (autoTable)
-      doc.autoTable({ html: '#invoiceItemsTable', startY: 60, theme: 'grid' });
-
-      doc.text(`Total: $${finalTotal}`, 150, doc.lastAutoTable.finalY + 10);
-
-      // Footer message based on customer type
-      const message = customerType === 'Restaurant' ? 'Make checks payable to Suburban Brewing Company.' : 'Paid through Fintech.';
-      doc.text(message, 20, doc.lastAutoTable.finalY + 30);
-
-      return doc;
-    }
-
-    // Save the invoice as PDF
-    function saveInvoice() {
-      const pdf = generatePDF();
-      const pdfData = pdf.output('arraybuffer');
-      const pdfBlob = new Blob([pdfData], { type: 'application/pdf' });
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-      window.open(pdfUrl, '_blank');
-    }
-
-    // Print the invoice as PDF
-    function printInvoice() {
-      const pdf = generatePDF();
-      pdf.autoPrint();
-      window.open(pdf.output('bloburl'), '_blank');
-    }
-
-    // Send the invoice via email (simulated by mailto link)
-    function sendInvoiceEmail() {
-      const pdf = generatePDF();
-      const pdfData = pdf.output('arraybuffer');
-      const pdfBlob = new Blob([pdfData], { type: 'application/pdf' });
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-
-      const email = prompt("Please enter the email address:");
-      if (email) {
-        window.location.href = `mailto:${email}?subject=Invoice ${document.getElementById('invoiceNumber').value}&body=Please find the attached invoice.&attachment=${pdfUrl}`;
-      }
-    }
-
-    // Function to generate barcode image (base64 encoded)
-    function generateBarcodeImage(invoiceNumber) {
-      const canvas = document.createElement('canvas');
-      JsBarcode(canvas, invoiceNumber, {
-        format: "CODE128",
-        displayValue: true,
-        fontSize: 18
-      });
-      return canvas.toDataURL('image/png');
-    }
-  </script>
 </body>
 </html>
