@@ -400,6 +400,86 @@ function postSaveCustomer(customer){
   }).then(r => r.json());
 }
 </script>
+<script>
+/* =========================================================
+   FINAL CUSTOMER SAVE OVERRIDE (LOCKED)
+   Forces POST + JSON
+========================================================= */
+
+(function(){
+  const _handleCustomerInput = handleCustomerInput;
+
+  handleCustomerInput = function(val){
+    _handleCustomerInput(val);
+
+    if (!selectedCustomer) return;
+    if (selectedCustomer.__saved) show;
+
+    selectedCustomer.__saved = true;
+
+    fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "saveCustomer",
+        name: selectedCustomer.name,
+        address: selectedCustomer.address || "",
+        type: selectedCustomer.type || "",
+        payment: selectedCustomer.payment || ""
+      })
+    }).then(()=>console.log("Customer POST saved"));
+  };
+})();
+</script>
+<script>
+/* =========================================================
+   FINAL INVOICE SAVE OVERRIDE (LOCKED)
+========================================================= */
+
+(function(){
+  const _saveInvoice = saveInvoice;
+
+  saveInvoice = function(){
+    const pdf = buildPDF();
+
+    const pdfBase64 = btoa(
+      new Uint8Array(pdf.output("arraybuffer"))
+        .reduce((d,b)=>d+String.fromCharCode(b),"")
+    );
+
+    let subtotal = parseFloat(sub.innerText.replace("$",""));
+    let totalCases = 0;
+    let totalKegs = 0;
+
+    document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
+      r.children[2].querySelectorAll("input").forEach(i=>{
+        if(i.dataset.type==="Case") totalCases+=+i.value;
+        if(i.dataset.type.includes("Keg")) totalKegs+=+i.value;
+      });
+    });
+
+    fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "saveInvoice",
+        invoice: invoiceNumber.value,
+        customer: customerName.value,
+        customerType: selectedCustomer?.type || "",
+        subtotal,
+        totalCases,
+        kegs: totalKegs,
+        pdfBase64
+      })
+    })
+    .then(r=>r.json())
+    .then(()=>{
+      alert("Invoice saved to Sheets & Drive");
+      _saveInvoice(); // preserve UI behavior
+    });
+  };
+})();
+</script>
 
 </body>
 </html>
