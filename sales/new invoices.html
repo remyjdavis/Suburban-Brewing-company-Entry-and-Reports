@@ -318,6 +318,7 @@ function confirmCustomer(){
     opt.value = name;
     customerList.append(opt);
     customerName.value = name;
+    updatePaymentNote(payment);
     closeCustomer();
   });
 }
@@ -428,12 +429,11 @@ function confirmProduct() {
   }
 
   const rows = [
-  { type: "Case",    price: document.getElementById("priceCase")?.value },
-  { type: "Bottle",  price: document.getElementById("priceBottle")?.value },
-  { type: "1/6 Keg", price: document.getElementById("priceSixth")?.value },
-  { type: "1/2 Keg", price: document.getElementById("priceHalf")?.value }
-];
-
+    { type: "Case",    price: priceCase.value },
+    { type: "Bottle",  price: priceBottle.value },
+    { type: "1/6 Keg", price: priceSixth.value },
+    { type: "1/2 Keg", price: priceHalf.value }
+  ];
 
   const productsToSave = rows
     .filter(r => r.price !== "" && !isNaN(r.price))
@@ -457,19 +457,31 @@ function confirmProduct() {
         price: p.price
       });
 
-      return fetch(API + "?" + params.toString())
-        .then(r => r.json());
+      return fetch(API + "?" + params.toString()).then(r => r.json());
     })
-  )
-  .then(() => {
+  ).then(() => {
+
+    // 🔁 UPDATE LOCAL CACHE (NO RELOAD)
+    if (!productData[product]) {
+      productData[product] = {};
+      productNames.push(product);
+
+      const opt = document.createElement("option");
+      opt.value = product;
+      productList.appendChild(opt);
+    }
+
+    productsToSave.forEach(p => {
+      productData[p.product][p.type] = p.price;
+    });
+
     closeProduct();
   })
   .catch(err => {
     console.error(err);
-    alert("Failed to save products");
+    alert("Failed to save product");
   });
 }
-
 
 function calc() {
   let subtotal = 0;
@@ -510,55 +522,105 @@ function calc() {
 }
 
 /* FIX #2 — SAVE INVOICE */
-async function saveInvoice(){
+async function saveInvoice() {
   const subtotal = parseFloat(sub.innerText.replace("$","")) || 0;
-
   const pdfBase64 = btoa("Invoice " + invoiceNumber.value);
-const items = [];
+  const items = [];
 
-document.querySelectorAll("#itemsTable tbody tr").forEach(row => {
-  const product = row.children[0].querySelector("input").value;
-  const qtyCol = row.children[2];
-  const priceCol = row.children[3];
+  document.querySelectorAll("#itemsTable tbody tr").forEach(row => {
+    const product = row.children[0].querySelector("input").value;
+    const qtyCol = row.children[2];
+    const priceCol = row.children[3];
 
-  qtyCol.querySelectorAll("input").forEach(qty => {
-    const type = qty.dataset.type;
-    const price = Number(
-      priceCol.querySelector(`[data-type="${type}"]`)?.value || 0
-    );
+    qtyCol.querySelectorAll("input").forEach(qty => {
+      const type = qty.dataset.type;
+      const price = Number(
+        priceCol.querySelector(`[data-type="${type}"]`)?.value || 0
+      );
 
-    items.push({
-      product,
-      type,
-      qty: Number(qty.value),
-      price,
-      lineTotal: qty.value * price
+      items.push({
+        product,
+        type,
+        quantity: Number(qty.value),
+        unitPrice: price,
+        total: qty.value * price
+      });
     });
   });
-});
-
 
   await fetch(API, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    action: "saveInvoice",
-    invoice: invoiceNumber.value,
-    customer: customerName.value,
-    customerType: "Restaurant",
-    items,
-    subtotal,
-    totalCases: 0,
-    kegs: 0,
-    pdfBase64
-  })
-});
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "saveInvoice",
+      invoice: invoiceNumber.value,
+      customer: customerName.value,
+      items,
+      subtotal,
+      tax: tax.innerText,
+      kegDeposit: keg.innerText,
+      total: total.innerText,
+      pdfBase64
+    })
+  });
 
-
-  alert("Invoice saved to Google Sheets");
+  alert("Invoice saved successfully");
 }
 
-function generatePDF(){ alert("PDF logic unchanged"); }
+
+function generatePDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.setFontSize(14);
+  doc.text("Invoice " + invoiceNumber.value, 14, 20);
+  doc.setFontSize(10);
+  doc.text("Customer: " + customerName.value, 14, 28);
+
+  let y = 40;
+
+  const tableData = [];
+
+  document.querySelectorAll("#itemsTable tbody tr").forEach(row => {
+    const product = row.children[0].querySelector("input").value;
+    const qtyCol = row.children[2];
+    const priceCol = row.children[3];
+
+    qtyCol.querySelectorAll("input").forEach(qty => {
+      const type = qty.dataset.type;
+      const price = Number(
+        priceCol.querySelector(`[data-type="${type}"]`)?.value || 0
+      );
+
+      tableData.push([
+        product,
+        type,
+        qty.value,
+        `$${price.toFixed(2)}`,
+        `$${(qty.value * price).toFixed(2)}`
+      ]);
+    });
+  });
+
+  doc.autoTable({
+    startY: y,
+    head: [["Product", "Type", "Qty", "Unit Price", "Total"]],
+    body: tableData
+  });
+
+  doc.text("Total: " + total.innerText, 14, doc.lastAutoTable.finalY + 10);
+  doc.save(`Invoice_${invoiceNumber.value}.pdf`);
+}
+function updatePaymentNote(customerType) {
+  const note = document.getElementById("paymentNote");
+
+  if (customerType === "Fintech") {
+    note.innerText = "Paid through Fintech.";
+  } else {
+    note.innerText = "Make checks payable to Suburban Brewing Company.";
+  }
+}
+
 function emailInvoice(){ alert("Email logic unchanged"); }
 function refreshPricesForRow(row) {
   const productName = row.children[0].querySelector("input").value;
