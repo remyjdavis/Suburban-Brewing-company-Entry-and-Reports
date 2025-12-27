@@ -200,7 +200,7 @@ function checkNewCustomer(v){
 }
 function checkNewProduct(value) {
   if (!value) return;
-  if (productListData.includes(value)) return;
+  if (productData[value]) return;
 
   mpProduct.value = value;
   document.getElementById("productModal").style.display = "flex";
@@ -242,6 +242,9 @@ function closeProduct() {
 }
 function handleTypeToggle(checkbox, container) {
   const type = checkbox.dataset.type;
+  const row = checkbox.closest("tr");
+  const priceInput = row.children[3].querySelector("input");
+  const productName = row.children[0].querySelector("input").value;
 
   if (checkbox.checked) {
     const qty = document.createElement("input");
@@ -251,11 +254,20 @@ function handleTypeToggle(checkbox, container) {
     qty.dataset.type = type;
     qty.oninput = calc;
     container.appendChild(qty);
+
+    // 🔥 AUTO PRICE
+    if (productData[productName]?.[type]) {
+      priceInput.value = productData[productName][type];
+    }
+
   } else {
     [...container.querySelectorAll(`input[data-type="${type}"]`)]
       .forEach(el => el.remove());
   }
+
+  calc();
 }
+
 
 
 /* ITEMS */
