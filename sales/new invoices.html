@@ -202,6 +202,8 @@ function addRow(){
   const tr=document.createElement("tr");
 
   const p=document.createElement("input");
+p.onblur = () => checkNewProduct(p.value);
+
   const t=document.createElement("select");
   ["Case","Bottle","1/6 Keg","1/2 Keg"].forEach(v=>t.add(new Option(v,v)));
 
