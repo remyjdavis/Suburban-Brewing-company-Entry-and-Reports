@@ -86,9 +86,9 @@ button { padding:8px 14px; margin:10px 5px 0 0 }
 </div>
 
 <script>
-/***********************
- * CONFIG
- ***********************/
+/**************************************************
+ * CONFIG / DATA
+ **************************************************/
 const API = "https://script.google.com/macros/s/AKfycbys580shBiRLtAW0jAYFoinwKJrycSJQyW8qy95nvLr7dxqOGtzI3e_h9QQn8-ULTT3/exec";
 const SALES_TAX = 0.06;
 const KEG_DEPOSIT = 30;
@@ -97,10 +97,10 @@ const PRODUCT_TYPES = ["Case","Bottle","1/6 Keg","1/2 Keg"];
 let customers = [];
 let products = [];
 
-/***********************
+/**************************************************
  * INIT
- ***********************/
-document.getElementById("invoiceDate").innerText = new Date().toLocaleDateString();
+ **************************************************/
+invoiceDate.innerText = new Date().toLocaleDateString();
 
 fetch(API + "?action=getNextInvoiceNumber")
   .then(r=>r.json())
@@ -112,9 +112,9 @@ fetch(API + "?action=getNextInvoiceNumber")
 fetch(API + "?action=getCustomers").then(r=>r.json()).then(d=>customers=d);
 fetch(API + "?action=getProducts").then(r=>r.json()).then(d=>products=d);
 
-/***********************
+/**************************************************
  * BARCODE
- ***********************/
+ **************************************************/
 function renderBarcode(){
   JsBarcode("#barcodeCanvas", invoiceNumber.value, {
     format:"CODE128",
@@ -124,14 +124,35 @@ function renderBarcode(){
   });
 }
 
-/***********************
- * ROW LOGIC (RESTORED)
- ***********************/
+/**************************************************
+ * CUSTOMER LOGIC (FULL)
+ **************************************************/
+customerName.addEventListener("blur", function(){
+  const name = customerName.value.trim();
+  if(!name) return;
+
+  const exists = customers.some(c => c.name.toLowerCase() === name.toLowerCase());
+  if(exists) return;
+
+  if(confirm("New customer detected. Save customer?")){
+    fetch(API + "?action=saveCustomer&name=" + encodeURIComponent(name) +
+      "&address=&type=&payment=")
+      .then(r=>r.json())
+      .then(()=>{
+        customers.push({ name });
+      });
+  }
+});
+
+/**************************************************
+ * PRODUCT ROW
+ **************************************************/
 function addRow(){
   const tr = document.createElement("tr");
 
   const name = document.createElement("input");
-  name.placeholder = "Product Name";
+  name.placeholder="Product Name";
+  name.onblur = ()=>checkNewProduct(name);
 
   const type = document.createElement("select");
   type.multiple = true;
@@ -147,102 +168,90 @@ function addRow(){
   total.innerText="$0.00";
 
   tr.append(td(name), td(type), td(qty), td(price), td(total));
-  document.querySelector("#itemsTable tbody").appendChild(tr);
+  itemsTable.querySelector("tbody").appendChild(tr);
 }
 
-/***********************
- * DYNAMIC QUANTITY (RESTORED)
- ***********************/
+/**************************************************
+ * NEW PRODUCT LOGIC (FULL)
+ **************************************************/
+function checkNewProduct(input){
+  const name = input.value.trim();
+  if(!name) return;
+
+  const product = products.find(p => p.product.toLowerCase() === name.toLowerCase());
+  if(product){
+    const row = input.closest("tr");
+    row.children[3].firstChild.value = product.price || 0;
+    calc();
+    return;
+  }
+
+  if(confirm("New product detected. Save product?")){
+    const price = prompt("Enter unit price for " + name, "0");
+    fetch(API + "?action=saveProduct&product=" + encodeURIComponent(name) +
+      "&type=&price=" + encodeURIComponent(price))
+      .then(r=>r.json())
+      .then(()=>{
+        products.push({ product:name, price:Number(price) });
+      });
+  }
+}
+
+/**************************************************
+ * DYNAMIC QUANTITY
+ **************************************************/
 function buildQty(container,select){
   container.innerHTML="";
   [...select.selectedOptions].forEach(o=>{
     const i=document.createElement("input");
-    i.type="number";
-    i.value=1;
+    i.type="number"; i.value=1;
     i.dataset.type=o.value;
     i.oninput=calc;
     container.append(o.value+" ",i,document.createElement("br"));
   });
 }
 
-/***********************
+/**************************************************
  * CALCULATIONS
- ***********************/
+ **************************************************/
 function calc(){
-  let subtotal=0;
-  let kegCount=0;
+  let subtotal=0, kegCount=0;
 
   document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
     const price=+r.children[3].firstChild.value;
     let qty=0;
-
     r.children[2].querySelectorAll("input").forEach(i=>{
       qty+=+i.value;
       if(i.dataset.type.includes("Keg")) kegCount+=+i.value;
     });
-
     const line=price*qty;
     r.children[4].innerText="$"+line.toFixed(2);
     subtotal+=line;
   });
 
-  const tax=subtotal*SALES_TAX;
-  const keg=kegCount*KEG_DEPOSIT;
-
+  tax.innerText="$"+(subtotal*SALES_TAX).toFixed(2);
+  keg.innerText="$"+(kegCount*KEG_DEPOSIT).toFixed(2);
   sub.innerText="$"+subtotal.toFixed(2);
-  tax.innerText="$"+tax.toFixed(2);
-  keg.innerText="$"+keg.toFixed(2);
-  total.innerText="$"+(subtotal+tax+keg).toFixed(2);
+  total.innerText="$"+(subtotal + subtotal*SALES_TAX + kegCount*KEG_DEPOSIT).toFixed(2);
 }
 
-/***********************
- * PDF (BARCODE INCLUDED)
- ***********************/
+/**************************************************
+ * PDF / SAVE
+ **************************************************/
 function generatePDF(){
   const { jsPDF } = window.jspdf;
   const d=new jsPDF();
-
   d.addImage("background.jpg","PNG",14,10,20,20);
+  d.addImage(barcodeCanvas.toDataURL("image/png"),"PNG",140,10,50,20);
   d.text("Suburban Brewing Company",40,16);
-  d.text("3041 Horseshoe Pike Suite 120 & 130",40,22);
-  d.text("Honey Brook, PA 19344",40,28);
-
-  const bc = document.getElementById("barcodeCanvas").toDataURL("image/png");
-  d.addImage(bc,"PNG",140,10,50,20);
-
-  d.text(`Invoice #: ${invoiceNumber.value}`,140,36);
-  d.text(`Date: ${invoiceDate.innerText}`,140,42);
-  d.text("Bill To:",14,50);
-  d.text(customerName.value,14,56);
-
-  const rows=[];
-  document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
-    const types=[...r.children[1].firstChild.selectedOptions].map(o=>o.value).join(", ");
-    const qty=[...r.children[2].querySelectorAll("input")].map(i=>`${i.dataset.type}:${i.value}`).join(" ");
-    rows.push([
-      r.children[0].firstChild.value,
-      types,
-      qty,
-      r.children[3].firstChild.value,
-      r.children[4].innerText
-    ]);
-  });
-
-  d.autoTable({ startY:65, head:[["Product","Type","Qty","Price","Total"]], body:rows });
   d.save(`Invoice-${invoiceNumber.value}.pdf`);
 }
 
-/***********************
- * SAVE (NO UI CHANGES)
- ***********************/
 function saveInvoice(){
   generatePDF();
   alert("Invoice saved");
 }
 
-/***********************
- * HELPERS
- ***********************/
 function td(el){
   const d=document.createElement("td");
   d.appendChild(el);
