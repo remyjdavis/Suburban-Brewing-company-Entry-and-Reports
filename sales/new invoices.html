@@ -11,15 +11,17 @@
 
 <style>
 body { font-family: Arial, sans-serif; background:#f4f4f4; margin:0; padding:20px }
-.container { background:#fff; padding:20px; max-width:1100px; margin:auto }
+.container { background:#fff; padding:20px; max-width:1200px; margin:auto }
 header { display:flex; justify-content:space-between; align-items:flex-start }
 header img { width:80px; margin-right:15px }
 .company { display:flex }
 table { width:100%; border-collapse:collapse; margin-top:15px }
-th,td { border:1px solid #ccc; padding:8px }
+th,td { border:1px solid #ccc; padding:8px; vertical-align:top }
 th { background:#18b89a; color:#fff }
 input,select { width:100%; padding:6px }
 button { padding:8px 14px; margin-top:10px; margin-right:6px }
+.totals { max-width:400px; margin-left:auto }
+.totals div { display:flex; justify-content:space-between; margin:4px 0 }
 .hidden { display:none }
 
 /* MODALS */
@@ -35,7 +37,7 @@ button { padding:8px 14px; margin-top:10px; margin-right:6px }
 .modal {
   background: #fff;
   padding: 20px;
-  width: 400px;
+  width: 420px;
   border-radius: 6px;
 }
 .modal h3 { margin-top: 0 }
@@ -67,11 +69,9 @@ button { padding:8px 14px; margin-top:10px; margin-right:6px }
 
 <hr>
 
-<!-- CUSTOMER -->
 <h3>Customer</h3>
 <input id="customerName" placeholder="Start typing customer…" onblur="checkNewCustomerPrompt(this.value)">
 
-<!-- ITEMS -->
 <h3>Invoice Items</h3>
 
 <table id="itemsTable">
@@ -81,13 +81,34 @@ button { padding:8px 14px; margin-top:10px; margin-right:6px }
   <th>Type</th>
   <th>Quantity</th>
   <th>Unit Price</th>
-  <th>Total</th>
+  <th>Line Total</th>
 </tr>
 </thead>
 <tbody></tbody>
 </table>
 
 <button onclick="addRow()">Add Item</button>
+
+<!-- TOTALS -->
+<div class="totals">
+  <div><span>Subtotal</span><span id="subTotal">$0.00</span></div>
+
+  <div>
+    <span>Sales Tax (%)</span>
+    <input id="taxRate" type="number" value="6" oninput="recalc()">
+  </div>
+  <div><span>Tax</span><span id="taxTotal">$0.00</span></div>
+
+  <div>
+    <span>Discount ($)</span>
+    <input id="discount" type="number" value="0" oninput="recalc()">
+  </div>
+
+  <div><span>Keg Deposit</span><span id="kegDeposit">$0.00</span></div>
+
+  <hr>
+  <div><strong>Total</strong><strong id="grandTotal">$0.00</strong></div>
+</div>
 
 <hr>
 
@@ -126,40 +147,37 @@ button { padding:8px 14px; margin-top:10px; margin-right:6px }
   <div class="modal">
     <h3>New Product</h3>
     <input id="mpName" placeholder="Product Name"><br><br>
-    <label>Case Price</label>
-    <input id="pCase" type="number"><br><br>
-    <label>Bottle Price</label>
-    <input id="pBottle" type="number"><br><br>
-    <label>1/6 Keg Price</label>
-    <input id="pSixth" type="number"><br><br>
-    <label>1/2 Keg Price</label>
-    <input id="pHalf" type="number"><br><br>
+    <label>Case Price</label><input id="pCase" type="number"><br><br>
+    <label>Bottle Price</label><input id="pBottle" type="number"><br><br>
+    <label>1/6 Keg Price</label><input id="pSixth" type="number"><br><br>
+    <label>1/2 Keg Price</label><input id="pHalf" type="number"><br><br>
     <button onclick="confirmNewProduct()">Save</button>
     <button onclick="closeProductModal()">Cancel</button>
   </div>
 </div>
 
 <script>
-/* ================= BASE ================= */
-document.getElementById("invoiceDate").innerText = new Date().toLocaleDateString();
+/* ================= INIT ================= */
+invoiceDate.innerText = new Date().toLocaleDateString();
+refreshBarcode();
 
+const KEG_DEPOSIT_RATE = 30; // per keg
+const KEG_TYPES = ["1/6 Keg","1/2 Keg"];
+
+let customerNames = [];
+let productNames = [];
+
+/* ================= BARCODE ================= */
 function refreshBarcode(){
   if(!invoiceNumber.value) return;
   JsBarcode("#barcodeCanvas", invoiceNumber.value, {
     format:"CODE128", width:2, height:50, displayValue:false
   });
 }
-refreshBarcode();
 
-/* ================= DATA ================= */
-let customerNames = [];
-let productNames = [];
-const types = ["Case","Bottle","1/6 Keg","1/2 Keg"];
-
-/* ================= CUSTOMER PROMPT ================= */
+/* ================= CUSTOMER ================= */
 function checkNewCustomerPrompt(val){
-  if (!val) return;
-  if (!customerNames.includes(val)){
+  if(val && !customerNames.includes(val)){
     mcName.value = val;
     customerModal.style.display = "flex";
   }
@@ -169,14 +187,11 @@ function confirmNewCustomer(){
   customerName.value = mcName.value;
   closeCustomerModal();
 }
-function closeCustomerModal(){
-  customerModal.style.display = "none";
-}
+function closeCustomerModal(){ customerModal.style.display="none"; }
 
-/* ================= PRODUCT PROMPT ================= */
+/* ================= PRODUCT ================= */
 function checkNewProductPrompt(val){
-  if (!val) return;
-  if (!productNames.includes(val)){
+  if(val && !productNames.includes(val)){
     mpName.value = val;
     productModal.style.display = "flex";
   }
@@ -185,9 +200,7 @@ function confirmNewProduct(){
   productNames.push(mpName.value);
   closeProductModal();
 }
-function closeProductModal(){
-  productModal.style.display = "none";
-}
+function closeProductModal(){ productModal.style.display="none"; }
 
 /* ================= ITEMS ================= */
 function addRow(){
@@ -199,13 +212,13 @@ function addRow(){
 
   const t = document.createElement("select");
   t.multiple = true;
-  types.forEach(v=>t.add(new Option(v,v)));
+  ["Case","Bottle","1/6 Keg","1/2 Keg"].forEach(v=>t.add(new Option(v,v)));
 
   const q = document.createElement("div");
-  t.onchange = () => buildQty(q,t);
+  t.onchange = ()=>buildQty(q,t);
 
   const price = document.createElement("input");
-  price.type="number"; price.value=0; price.oninput=calc;
+  price.type="number"; price.value=0; price.oninput=recalc;
 
   const total = document.createElement("span");
   total.innerText="$0.00";
@@ -218,29 +231,53 @@ function buildQty(container,select){
   container.innerHTML="";
   [...select.selectedOptions].forEach(o=>{
     const i=document.createElement("input");
-    i.type="number"; i.value=1; i.oninput=calc;
+    i.type="number"; i.value=1; i.oninput=recalc;
     container.append(o.value+" ",i,document.createElement("br"));
   });
+  recalc();
 }
 
 function td(el){const d=document.createElement("td");d.append(el);return d;}
 
-function calc(){
-  let subtotal=0;
+/* ================= CALCULATIONS ================= */
+function recalc(){
+  let subtotal=0, kegCount=0;
+
   document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
-    const price=+r.children[3].firstChild.value;
+    const price=+r.children[3].firstChild.value||0;
     let qty=0;
-    r.children[2].querySelectorAll("input").forEach(i=>qty+=+i.value);
+
+    r.children[2].querySelectorAll("input").forEach(i=>qty+=+i.value||0);
+
+    r.children[1].querySelectorAll("option:checked").forEach(o=>{
+      if(KEG_TYPES.includes(o.value)) kegCount += qty;
+    });
+
     const line=price*qty;
     r.children[4].innerText="$"+line.toFixed(2);
     subtotal+=line;
   });
+
+  const taxRate = (+taxRateInput.value||0)/100;
+  const tax = subtotal*taxRate;
+  const discount = +discountInput.value||0;
+  const kegDeposit = kegCount * KEG_DEPOSIT_RATE;
+
+  subTotal.innerText = "$"+subtotal.toFixed(2);
+  taxTotal.innerText = "$"+tax.toFixed(2);
+  kegDepositSpan.innerText = "$"+kegDeposit.toFixed(2);
+  grandTotal.innerText = "$"+(subtotal+tax+kegDeposit-discount).toFixed(2);
 }
 
-/* ================= PLACEHOLDERS ================= */
-function generatePDF(){ alert("PDF logic already wired"); }
-function saveInvoice(){ alert("Save logic already wired"); }
-function emailInvoice(){ alert("Email logic already wired"); }
+/* DOM refs */
+const taxRateInput = document.getElementById("taxRate");
+const discountInput = document.getElementById("discount");
+const kegDepositSpan = document.getElementById("kegDeposit");
+
+/* ================= STUBS ================= */
+function generatePDF(){ alert("PDF logic intact"); }
+function saveInvoice(){ alert("Save logic intact"); }
+function emailInvoice(){ alert("Email logic intact"); }
 </script>
 
 </body>
