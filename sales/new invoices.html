@@ -278,13 +278,14 @@ function confirmProduct() {
   productsToSave.map(p =>
     fetch(API, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "saveProduct",
-        product: p.product,
-        type: p.type,
-        price: p.price
-      })
+      headers: { "Content-Type": "text/plain" },
+body: JSON.stringify({
+  action: "saveProduct",
+  product: p.product,
+  type: p.type,
+  price: p.price
+})
+
     })
   )
 )
