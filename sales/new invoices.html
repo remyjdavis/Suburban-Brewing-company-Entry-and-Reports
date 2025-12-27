@@ -224,6 +224,22 @@ function closeCustomer(){
 function closeProduct() {
   document.getElementById("productModal").style.display = "none";
 }
+function handleTypeToggle(checkbox, container) {
+  const type = checkbox.dataset.type;
+
+  if (checkbox.checked) {
+    const qty = document.createElement("input");
+    qty.type = "number";
+    qty.min = 1;
+    qty.value = 1;
+    qty.dataset.type = type;
+    qty.oninput = calc;
+    container.appendChild(qty);
+  } else {
+    [...container.querySelectorAll(`input[data-type="${type}"]`)]
+      .forEach(el => el.remove());
+  }
+}
 
 /* ITEMS */
 function addRow(){
