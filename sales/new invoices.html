@@ -265,7 +265,7 @@ function confirmProduct() {
 
 
   const productsToSave = rows
-    .filter(r => r.price !== "")
+    .filter(r => r.price !== "" && !isNaN(r.price))
     .map(r => ({
       product,
       type: r.type,
