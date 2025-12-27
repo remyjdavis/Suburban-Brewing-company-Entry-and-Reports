@@ -154,12 +154,18 @@ function addRow(){
   ["Case","Bottle","1/6 Keg","1/2 Keg"].forEach(v=>t.add(new Option(v,v)));
   const q=document.createElement("div");
 
-  t.onchange=()=>{ q.innerHTML=""; [...t.selectedOptions].forEach(o=>{
-    const i=document.createElement("input");
-    i.type="number"; i.value=1; i.dataset.type=o.value;
-    i.oninput=calc;
-    q.append(o.value+" ",i,document.createElement("br"));
-  })};
+  t.onchange=()=>{ 
+    q.innerHTML=""; 
+    [...t.selectedOptions].forEach(o=>{
+      const i=document.createElement("input");
+      i.type="number"; 
+      i.value=1; 
+      i.dataset.type=o.value;
+      i.oninput=calc;
+      q.append(o.value+" ",i,document.createElement("br"));
+    });
+    calc();   /* ← ADDED (CHANGE #2) */
+  };
 
   const price=document.createElement("input");
   price.type="number"; price.value=0; price.oninput=calc;
@@ -186,8 +192,10 @@ function calc(){
     r.children[4].innerText="$"+line.toFixed(2);
     subtotal+=line;
   });
-  const discount=cases>10?subtotal*0.10:0;
-  const tax=customerType==="Restaurant"?subtotal*SALES_TAX_RATE:0;
+
+  const discount = cases >= 10 ? subtotal * 0.10 : 0; /* ← CHANGE #1 */
+  const tax = customerType==="Restaurant" ? subtotal*SALES_TAX_RATE : 0;
+
   document.getElementById("sub").innerText="$"+subtotal.toFixed(2);
   document.getElementById("disc").innerText="$"+discount.toFixed(2);
   document.getElementById("tax").innerText="$"+tax.toFixed(2);
