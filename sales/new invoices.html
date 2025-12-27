@@ -501,6 +501,7 @@ function calc() {
   let subtotal = 0;
   let kegDeposit = 0;
   let totalCases = 0;
+  let caseSubtotal = 0; // ONLY case dollars are discountable
 
   document.querySelectorAll("#itemsTable tbody tr").forEach(row => {
     const qtyCol = row.children[2];
@@ -519,12 +520,13 @@ function calc() {
       const lineTotal = quantity * price;
       subtotal += lineTotal;
 
-      // ✅ Count CASES only
+      // ✅ CASE tracking (count + dollars)
       if (type === "Case") {
         totalCases += quantity;
+        caseSubtotal += lineTotal;
       }
 
-      // ✅ Keg deposit
+      // ✅ Keg deposit (never discounted)
       if (type.includes("Keg")) {
         kegDeposit += quantity * KEG_DEPOSIT_RATE;
       }
@@ -539,18 +541,19 @@ function calc() {
     });
   });
 
-  // Subtotal
+  // Subtotal (all products)
   sub.innerText = "$" + subtotal.toFixed(2);
 
-  // ✅ Discount: 10% when 10+ cases
+  // ✅ Discount: 10% ONLY on CASE dollars when 10+ cases
   let discount = 0;
   if (totalCases >= 10) {
-    discount = subtotal * 0.10;
+    discount = caseSubtotal * 0.10;
   }
   disc.innerText = "$" + discount.toFixed(2);
 
-  // Tax (after discount)
-  const taxAmount = (subtotal - discount) * SALES_TAX_RATE;
+  // Tax (after discount, before keg deposits)
+  const taxableAmount = subtotal - discount;
+  const taxAmount = taxableAmount * SALES_TAX_RATE;
   tax.innerText = "$" + taxAmount.toFixed(2);
 
   // Keg Deposit
@@ -558,10 +561,11 @@ function calc() {
 
   // Grand Total
   const grandTotal =
-    subtotal - discount + taxAmount + kegDeposit;
+    taxableAmount + taxAmount + kegDeposit;
 
   total.innerText = "$" + grandTotal.toFixed(2);
 }
+
 
 
 /* FIX #2 — SAVE INVOICE */
