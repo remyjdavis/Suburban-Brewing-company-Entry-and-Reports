@@ -159,7 +159,8 @@ const SALES_TAX_RATE = 0.06;
 const KEG_DEPOSIT = 30;
 
 let customerListData = [];
-let productListData = [];
+let productData = {}; 
+// { "IPA": { "Case": 120, "Bottle": 6 } }
 
 document.getElementById("invoiceDate").innerText = new Date().toLocaleDateString();
 JsBarcode("#barcodeCanvas", invoiceNumber.value, { displayValue:false });
@@ -179,8 +180,15 @@ fetch(API + "?action=getCustomers")
 fetch(API + "?action=getProducts")
   .then(r => r.json())
   .then(data => {
-    productListData = [...new Set(data.map(p => p.product))];
+    productData = {};
+    data.forEach(p => {
+      if (!productData[p.product]) {
+        productData[p.product] = {};
+      }
+      productData[p.product][p.type] = Number(p.price);
+    });
   });
+
 
 function filterCustomers(){}
 
@@ -255,7 +263,7 @@ function addRow(){
   const tr=document.createElement("tr");
 
   const p=document.createElement("input");
-p.onblur = () => checkNewProduct(p.value);
+p.onchange = () => checkNewProduct(p.value);
 
   const typesDiv = document.createElement("div");
 typesDiv.innerHTML = `
