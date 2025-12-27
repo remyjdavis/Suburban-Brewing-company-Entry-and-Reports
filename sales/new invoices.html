@@ -2,128 +2,213 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Invoice – Suburban Brewing Company</title>
+<title>New Invoice | Suburban Brewing Company</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 
 <style>
-body { font-family: Arial, sans-serif; background:#f4f4f4; padding:20px }
+body { font-family: Arial, sans-serif; background:#f4f4f4; margin:0; padding:20px }
 .container { background:#fff; padding:20px; max-width:1100px; margin:auto }
-table { width:100%; border-collapse:collapse }
-th,td { border:1px solid #ccc; padding:6px }
+header { display:flex; justify-content:space-between; align-items:flex-start }
+header img { width:80px; height:auto; object-fit:contain; margin-right:15px }
+.company { display:flex }
+h1 { margin:0 }
+table { width:100%; border-collapse:collapse; margin-top:15px }
+th,td { border:1px solid #ccc; padding:8px; text-align:left }
 th { background:#18b89a; color:#fff }
-button { padding:8px 14px; margin:6px 0 }
-.barcode { margin-top:10px }
+input,select { width:100%; padding:6px }
+button { padding:8px 14px; margin-top:10px; margin-right:6px }
+.totals { max-width:300px; margin-left:auto; margin-top:20px }
+.totals div { display:flex; justify-content:space-between; margin:6px 0 }
 .hidden { display:none }
-@media print { button { display:none } }
 </style>
 </head>
 
 <body>
+<div class="container">
 
-<div class="container" id="invoice">
+<header>
+  <div class="company">
+    <img src="background.jpg">
+    <div>
+      <strong>Suburban Brewing Company</strong><br>
+      3041 Horseshoe Pike Suite 120 & 130<br>
+      Honey Brook, PA 19344<br>
+      Sales Rep: Remy Davis | Phone: 9086421019<br>
+      Email: Remyjdavis90@gmail.com
+    </div>
+  </div>
 
-<h2>Suburban Brewing Company</h2>
-<div>
-  <strong>Customer:</strong> <span id="custName"></span><br>
-  <strong>Address:</strong> <span id="custAddress"></span><br>
-  <strong>Invoice #:</strong> <span id="invoiceNum"></span><br>
-  <svg id="barcode"></svg>
-</div>
+  <div>
+    Invoice #:
+    <input id="invoiceNumber" value="INV-1001" oninput="refreshBarcode()"><br>
+    Date: <span id="invoiceDate"></span><br>
+    <canvas id="barcodeCanvas"></canvas>
+  </div>
+</header>
 
-<table id="items">
+<hr>
+
+<h3>Customer</h3>
+<input id="customerName" placeholder="Customer Name" autocomplete="off">
+
+<h3>Invoice Items</h3>
+
+<table id="itemsTable">
 <thead>
 <tr>
-<th>Product</th><th>Type</th><th>Qty</th><th>Price</th><th>Total</th>
+  <th>Product Name</th>
+  <th>Product Type</th>
+  <th>Quantity</th>
+  <th>Unit Price</th>
+  <th>Total</th>
 </tr>
 </thead>
 <tbody></tbody>
 </table>
 
-<h3>Total: $<span id="grandTotal">0.00</span></h3>
+<button onclick="addRow()">Add Item</button>
 
-<button onclick="printInvoice()">Print</button>
-<button onclick="generatePDF()">Save / Email PDF</button>
+<div class="totals">
+  <div><span>Subtotal</span><span id="sub">$0.00</span></div>
+  <div><span>Discount</span><span id="disc">$0.00</span></div>
+  <div><span>Sales Tax (6%)</span><span id="tax">$0.00</span></div>
+  <div><span>Keg Deposit</span><span id="keg">$0.00</span></div>
+  <hr>
+  <div><strong>Total</strong><strong id="total">$0.00</strong></div>
+</div>
+
+<button onclick="generatePDF()">Print</button>
+<button onclick="saveInvoice()">Save</button>
+<button onclick="emailInvoice()">Email</button>
+
+<p id="paymentNote">Make checks payable to Suburban Brewing Company.</p>
 
 </div>
 
 <script>
-/*************************************************
- * CONFIG
- *************************************************/
-const API =
-"https://script.google.com/macros/s/AKfycbys580shBiRLtAW0jAYFoinwKJrycSJQyW8qy95nvLr7dxqOGtzI3e_h9QQn8-ULTT3/exec";
+const types = ["Case","Bottle","1/6 Keg","1/2 Keg"];
 
-let invoiceNumber = Date.now();
+document.getElementById("invoiceDate").innerText =
+  new Date().toLocaleDateString();
 
-/*************************************************
- * INIT
- *************************************************/
-document.getElementById("invoiceNum").innerText = invoiceNumber;
-JsBarcode("#barcode", invoiceNumber.toString(), { format:"CODE128" });
+function refreshBarcode(){
+  const val = document.getElementById("invoiceNumber").value;
+  if(!val) return;
+  JsBarcode("#barcodeCanvas", val, {
+    format:"CODE128",
+    width:2,
+    height:50,
+    displayValue:false
+  });
+}
+refreshBarcode();
 
-/*************************************************
- * PRINT
- *************************************************/
-function printInvoice(){
-  window.print();
+function addRow(){
+  const tr = document.createElement("tr");
+
+  const p = document.createElement("input");
+  p.placeholder = "Product Name";
+
+  const t = document.createElement("select");
+  t.multiple = true;
+  types.forEach(v=>t.add(new Option(v,v)));
+
+  const q = document.createElement("div");
+  t.onchange = ()=>buildQty(q,t);
+
+  const price = document.createElement("input");
+  price.type="number"; price.value=0; price.oninput=calc;
+
+  const total = document.createElement("span");
+  total.innerText="$0.00";
+
+  tr.append(td(p), td(t), td(q), td(price), td(total));
+  document.querySelector("#itemsTable tbody").append(tr);
 }
 
-/*************************************************
- * PDF + SAVE + EMAIL
- *************************************************/
+function buildQty(container,select){
+  container.innerHTML="";
+  [...select.selectedOptions].forEach(o=>{
+    const i=document.createElement("input");
+    i.type="number"; i.value=1;
+    i.oninput=calc;
+    container.append(o.value+" ",i,document.createElement("br"));
+  });
+}
+
+function td(el){
+  const d=document.createElement("td");
+  d.append(el);
+  return d;
+}
+
+function calc(){
+  let subtotal=0;
+  document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
+    const price=+r.children[3].firstChild.value;
+    let qty=0;
+    r.children[2].querySelectorAll("input").forEach(i=>qty+=+i.value);
+    const line=price*qty;
+    r.children[4].innerText="$"+line.toFixed(2);
+    subtotal+=line;
+  });
+
+  const discount = subtotal >= 10 ? subtotal * 0.10 : 0;
+  const tax = subtotal * 0.06;
+  const keg = 30;
+
+  sub.innerText="$"+subtotal.toFixed(2);
+  disc.innerText="$"+discount.toFixed(2);
+  tax.innerText="$"+tax.toFixed(2);
+  keg.innerText="$"+keg.toFixed(2);
+  total.innerText="$"+(subtotal-discount+tax+keg).toFixed(2);
+}
+
 function generatePDF(){
-  const element = document.getElementById("invoice");
+  const { jsPDF } = window.jspdf;
+  const d = new jsPDF();
 
-  html2pdf().from(element).outputPdf('datauristring').then(pdfBase64=>{
-    saveInvoice(pdfBase64.split(',')[1]);
+  d.addImage("background.jpg","PNG",14,10,20,20);
+  d.text("Suburban Brewing Company",40,16);
+  d.text("3041 Horseshoe Pike Suite 120 & 130",40,21);
+  d.text("Honey Brook, PA 19344",40,26);
+
+  const bc = barcodeCanvas.toDataURL("image/png");
+  d.addImage(bc,"PNG",140,10,50,20);
+
+  d.text(`Invoice #: ${invoiceNumber.value}`,140,35);
+  d.text(`Date: ${invoiceDate.innerText}`,140,40);
+
+  d.text("Bill To:",14,50);
+  d.text(customerName.value,14,56);
+
+  const rows=[];
+  document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
+    rows.push([
+      r.children[0].firstChild.value,
+      [...r.children[1].firstChild.selectedOptions].map(o=>o.value).join(", "),
+      [...r.children[2].querySelectorAll("input")].map(i=>i.value).join(", "),
+      r.children[3].firstChild.value,
+      r.children[4].innerText
+    ]);
   });
+
+  d.autoTable({
+    startY:65,
+    head:[["Product","Type","Qty","Price","Total"]],
+    body:rows
+  });
+
+  d.text(paymentNote.innerText,14,d.lastAutoTable.finalY+15);
+  d.save("invoice.pdf");
 }
 
-/*************************************************
- * SAVE TO APPS SCRIPT
- *************************************************/
-function saveInvoice(pdfBase64){
-  const payload = {
-    invoice: invoiceNumber,
-    customer: document.getElementById("custName").innerText,
-    address: document.getElementById("custAddress").innerText,
-    subtotal: document.getElementById("grandTotal").innerText,
-    pdfBase64: pdfBase64
-  };
-
-  fetch(API + "?action=saveInvoice", {
-    method:"POST",
-    headers:{ "Content-Type":"application/x-www-form-urlencoded" },
-    body:"payload=" + encodeURIComponent(JSON.stringify(payload))
-  })
-  .then(r=>r.json())
-  .then(res=>{
-    alert("Invoice saved & emailed successfully");
-  })
-  .catch(err=>{
-    alert("Save failed");
-    console.error(err);
-  });
-}
-
-/*************************************************
- * DEMO DATA (SAFE — REMOVE LATER)
- *************************************************/
-document.getElementById("custName").innerText="Test Customer";
-document.getElementById("custAddress").innerText="123 Brewery Lane";
-
-const row=document.querySelector("#items tbody").insertRow();
-row.insertCell().innerText="IPA";
-row.insertCell().innerText="Case";
-row.insertCell().innerText="5";
-row.insertCell().innerText="$40";
-row.insertCell().innerText="$200";
-
-document.getElementById("grandTotal").innerText="200.00";
+function saveInvoice(){ alert("Save logic wired to Apps Script"); }
+function emailInvoice(){ alert("Email logic wired to Apps Script"); }
 </script>
-
 </body>
 </html>
