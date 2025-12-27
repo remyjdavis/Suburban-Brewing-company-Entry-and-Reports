@@ -179,14 +179,37 @@ function buildPDF(){
   return d;
 }
 
+/* ---------- SAVE (FIXED) ---------- */
+function saveInvoice(){
+  const pdf = buildPDF();
+  const pdfBase64 = pdf.output("datauristring").split(",")[1];
+
+  const payload = {
+    invoice: invoiceNumber.value,
+    date: invoiceDate.innerText,
+    customer: customerName.value,
+    customerAddress: selectedCustomer?.address || "",
+    subtotal: sub.innerText.replace("$",""),
+    discount: disc.innerText.replace("$",""),
+    tax: tax.innerText.replace("$",""),
+    deposit: keg.innerText.replace("$",""),
+    total: total.innerText.replace("$",""),
+    pdfBase64
+  };
+
+  fetch(API + "?action=saveInvoice", {
+    method:"POST",
+    headers:{ "Content-Type":"application/x-www-form-urlencoded" },
+    body:"payload="+encodeURIComponent(JSON.stringify(payload))
+  })
+  .then(r=>r.json())
+  .then(()=>alert("Invoice saved to Sheets & Drive"));
+}
+
 function printInvoice(){
   const d=buildPDF();
   d.autoPrint();
   window.open(d.output("bloburl"));
-}
-
-function saveInvoice(){
-  alert("Save logic unchanged and working");
 }
 
 function emailInvoice(){
@@ -194,7 +217,7 @@ function emailInvoice(){
 }
 
 function goBack(){
-  window.location.href="invoice.html";
+  window.location.href="invoices.html";
 }
 </script>
 </body>
