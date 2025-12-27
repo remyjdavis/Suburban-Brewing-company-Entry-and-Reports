@@ -155,7 +155,7 @@ function confirmCustomer(){
 
   fetch(API, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "text/plain" },
     body: JSON.stringify({
       action: "saveCustomer",
       name,
