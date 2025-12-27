@@ -214,8 +214,11 @@ function checkNewCustomer(v){
 }
 function checkNewProduct(value) {
   if (!value) return;
+
+  // existing product → do nothing
   if (productData[value]) return;
 
+  // new product → open modal
   mpProduct.value = value;
   document.getElementById("productModal").style.display = "flex";
 }
