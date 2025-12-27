@@ -346,57 +346,6 @@
       document.getElementById('salesTax').textContent = salesTax.toFixed(2);
       document.getElementById('finalTotal').textContent = finalTotal.toFixed(2);
     }
-
-    // Save invoice as PDF (for backend integration)
-    function saveInvoice() {
-      const pdf = generatePDF();
-      const pdfData = pdf.output('arraybuffer');
-      console.log("Saving invoice as PDF...");
-      // Placeholder: Save PDF to Google Drive
-      // google.script.run.saveInvoiceToDrive(pdfData, invoiceNumber);
-    }
-
-    // Send invoice as PDF via email (for backend integration)
-    function sendInvoiceEmail() {
-      const pdf = generatePDF();
-      const pdfData = pdf.output('arraybuffer');
-      const email = prompt("Please enter the email address:");
-      console.log("Sending invoice via email...");
-      // Placeholder: Send PDF via email
-      // google.script.run.sendInvoiceByEmail(email, pdfData, invoiceNumber);
-    }
-
-    // Generate a PDF of the invoice
-    function generatePDF() {
-      const doc = new jsPDF();
-      const invoiceNumber = document.getElementById('invoiceNumber').value;
-      const invoiceDate = document.getElementById('invoiceDate').textContent;
-      const finalTotal = document.getElementById('finalTotal').textContent;
-
-      doc.setFontSize(20);
-      doc.text("Invoice", 20, 20);
-
-      doc.setFontSize(12);
-      doc.text("Suburban Brewing Company", 20, 30);
-      doc.text("3041 Horseshoe Pike Suite 120 & 130", 20, 35);
-      doc.text("Honey Brook, PA 19344", 20, 40);
-      doc.text("Sales Rep: Remy Davis | Phone: 9086421019", 20, 45);
-      doc.text("Email: Remyjdavis90@gmail.com", 20, 50);
-      doc.text(`Invoice #: ${invoiceNumber}`, 150, 30);
-      doc.text(`Date: ${invoiceDate}`, 150, 35);
-
-      doc.autoTable({ html: '#invoiceItemsTable', startY: 60, theme: 'grid' });
-
-      doc.text(`Total: $${finalTotal}`, 150, doc.lastAutoTable.finalY + 10);
-      return doc;
-    }
-
-    // Print the invoice as PDF
-    function printInvoice() {
-      const pdf = generatePDF();
-      pdf.autoPrint();
-      window.open(pdf.output('bloburl'), '_blank');
-    }
   </script>
 </body>
 </html>
