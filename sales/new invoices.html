@@ -31,25 +31,20 @@ button { padding:8px 14px; margin-top:10px }
 .type-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
+  gap: 4px;              /* tighter */
+  margin-bottom: 4px;   /* less vertical spacing */
   font-size: 14px;
+  line-height: 1.1;
   white-space: nowrap;
 }
 
-.type-row input {
+.type-row input[type="checkbox"] {
   margin: 0;
+  padding: 0;
 }
-
-
-.type-pill input {
-  margin: 0;
-  transform: scale(1.05);
-}
-
-
-.type-pill input {
-  margin: 0;
+#itemsTable td:nth-child(2) {
+  vertical-align: top;
+  padding-top: 6px;
 }
 #itemsTable th:nth-child(4),
 #itemsTable td:nth-child(4) {
@@ -69,6 +64,39 @@ button { padding:8px 14px; margin-top:10px }
 #itemsTable td:nth-child(2) {
   min-width: 200px;
   vertical-align: top;
+}
+.qty-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.qty-container input {
+  width: 60px;
+}
+.type-row {
+  display: flex;
+  align-items: center;
+  height: 28px;
+}
+
+.qty-container .type-line {
+  height: 28px;
+  display: flex;
+  align-items: center;
+}
+.type-row {
+  margin: 0;
+  padding: 0;
+}
+
+.qty-container {
+  margin-top: 2px;
+}
+.column-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 </style>
@@ -300,39 +328,49 @@ function closeCustomer(){
 function closeProduct() {
   document.getElementById("productModal").style.display = "none";
 }
-function handleTypeToggle(cb, container) {
+function handleTypeToggle(cb, qtyCol, priceCol, totalCol) {
   const row = cb.closest("tr");
   const product = row.children[0].querySelector("input").value;
-  const priceInput = row.children[3].querySelector("input");
 
   if (cb.checked) {
+    const type = cb.dataset.type;
+
+    // QTY
     const qty = document.createElement("input");
     qty.type = "number";
     qty.min = 1;
     qty.value = 1;
-    qty.dataset.type = cb.dataset.type;
-    qty.style.width = "60px";
+    qty.dataset.type = type;
     qty.oninput = calc;
 
-    container.appendChild(qty);
+    // PRICE
+    const price = document.createElement("input");
+    price.type = "number";
+    price.readOnly = true;
+    price.dataset.type = type;
+    price.style.background = "#f2f2f2";
+    price.value = productData[product]?.[type] || 0;
 
-    // ✅ SET UNIT PRICE BASED ON TYPE
-    if (productData[product]?.[cb.dataset.type]) {
-      priceInput.value = productData[product][cb.dataset.type];
-    }
+    // TOTAL
+    const total = document.createElement("div");
+    total.dataset.type = type;
+    total.innerText = "$0.00";
+
+    qtyCol.appendChild(qty);
+    priceCol.appendChild(price);
+    totalCol.appendChild(total);
   } else {
-    container
-      .querySelectorAll(`input[data-type="${cb.dataset.type}"]`)
-      .forEach(el => el.remove());
+    const type = cb.dataset.type;
 
-    // clear price if no types left
-    if (!container.querySelector("input")) {
-      priceInput.value = "";
-    }
+    qtyCol.querySelector(`[data-type="${type}"]`)?.remove();
+    priceCol.querySelector(`[data-type="${type}"]`)?.remove();
+    totalCol.querySelector(`[data-type="${type}"]`)?.remove();
   }
 
   calc();
 }
+
+
 
 /* ITEMS */
 function addRow(){
@@ -373,19 +411,27 @@ typesDiv.innerHTML = `
 
 
   const qtyContainer = document.createElement("div");
+qtyContainer.className = "qty-container";
 
-typesDiv.querySelectorAll("input[type=checkbox]").forEach(cb => {
-  cb.onchange = () => handleTypeToggle(cb, qtyContainer);
+
+[p, typesDiv, qtyContainer, priceContainer, totalContainer].forEach(el => {
+  const td = document.createElement("td");
+  td.append(el);
+  tr.append(td);
 });
 
   const q=document.createElement("input");
   q.type="number"; q.value=1; q.oninput=calc;
 
-  const price = document.createElement("input");
-price.type = "number";
-price.value = 0;
-price.readOnly = true;
-price.style.background = "#f2f2f2";
+const qtyContainer = document.createElement("div");
+qtyContainer.className = "column-stack";
+
+const priceContainer = document.createElement("div");
+priceContainer.className = "column-stack";
+
+const totalContainer = document.createElement("div");
+totalContainer.className = "column-stack";
+
 
 
   const total=document.createElement("span"); total.innerText="$0.00";
@@ -454,23 +500,31 @@ function calc() {
   let subtotal = 0;
 
   document.querySelectorAll("#itemsTable tbody tr").forEach(row => {
-    const qtyContainer = row.children[2];
-    const price = Number(row.children[3].querySelector("input").value || 0);
-    const totalCell = row.children[4];
+    const qtyCol = row.children[2];
+    const priceCol = row.children[3];
+    const totalCol = row.children[4];
 
-    let rowTotal = 0;
+    totalCol.innerHTML = "";
 
-    qtyContainer.querySelectorAll("input[type=number]").forEach(qtyInput => {
-      rowTotal += Number(qtyInput.value || 0) * price;
+    qtyCol.querySelectorAll("input").forEach(qty => {
+      const type = qty.dataset.type;
+      const price = Number(
+        priceCol.querySelector(`[data-type="${type}"]`)?.value || 0
+      );
+
+      const lineTotal = qty.value * price;
+      subtotal += lineTotal;
+
+      const t = document.createElement("div");
+      t.innerText = "$" + lineTotal.toFixed(2);
+      totalCol.appendChild(t);
     });
-
-    totalCell.innerText = "$" + rowTotal.toFixed(2);
-    subtotal += rowTotal;
   });
 
   sub.innerText = "$" + subtotal.toFixed(2);
   total.innerText = "$" + subtotal.toFixed(2);
 }
+
 
 
 /* FIX #2 — SAVE INVOICE */
@@ -483,31 +537,32 @@ const items = [];
 document.querySelectorAll("#itemsTable tbody tr").forEach(row => {
   const product = row.children[0].querySelector("input").value;
 
-  row.children[2].querySelectorAll("div").forEach(line => {
+  row.children[2].querySelectorAll(".type-line").forEach(line => {
     items.push({
       product,
       type: line.dataset.type,
-      qty: Number(line.children[0].value),
-      price: Number(line.children[1].value)
+      qty: Number(line.querySelector("input").value),
+      price: Number(row.children[3].querySelector("input").value)
     });
   });
 });
 
   await fetch(API, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      action: "saveInvoice",
-      invoice: invoiceNumber.value,
-      customer: customerName.value,
-      customerType: "Restaurant",
-      items,
-      subtotal,
-      totalCases: 0,
-      kegs: 0,
-      pdfBase64
-    })
-  });
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    action: "saveInvoice",
+    invoice: invoiceNumber.value,
+    customer: customerName.value,
+    customerType: "Restaurant",
+    items,
+    subtotal,
+    totalCases: 0,
+    kegs: 0,
+    pdfBase64
+  })
+});
+
 
   alert("Invoice saved to Google Sheets");
 }
