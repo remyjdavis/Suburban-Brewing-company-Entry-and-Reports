@@ -10,9 +10,9 @@
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
 <style>
-body { font-family: Arial, sans-serif; background:#f4f4f4; padding:20px }
-.container { background:#fff; padding:20px; max-width:1200px; margin:auto }
-header { display:flex; justify-content:space-between }
+body { font-family: Arial, sans-serif; background:#f4f4f4; margin:0; padding:20px }
+.container { background:#fff; padding:20px; max-width:1100px; margin:auto }
+header { display:flex; justify-content:space-between; align-items:flex-start }
 header img { width:80px; margin-right:15px }
 .company { display:flex }
 table { width:100%; border-collapse:collapse; margin-top:15px }
@@ -20,10 +20,14 @@ th,td { border:1px solid #ccc; padding:8px }
 th { background:#18b89a; color:#fff }
 input,select { width:100%; padding:6px }
 button { padding:8px 14px; margin-top:10px }
-.totals { max-width:420px; margin-left:auto }
-.totals div { display:flex; justify-content:space-between; margin:4px 0 }
-.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; z-index:9999 }
-.modal { background:#fff; padding:20px; width:420px; border-radius:6px }
+.totals { max-width:300px; margin-left:auto; margin-top:20px }
+.totals div { display:flex; justify-content:space-between; margin:6px 0 }
+
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.6);
+  display:none; align-items:center; justify-content:center; z-index:9999
+}
+.modal { background:#fff; padding:20px; width:400px; border-radius:6px }
 </style>
 </head>
 
@@ -37,11 +41,10 @@ button { padding:8px 14px; margin-top:10px }
       <strong>Suburban Brewing Company</strong><br>
       3041 Horseshoe Pike Suite 120 & 130<br>
       Honey Brook, PA 19344<br>
-      Sales Rep: Remy Davis | 9086421019<br>
-      Remyjdavis90@gmail.com
+      Sales Rep: Remy Davis | Phone: 9086421019<br>
+      Email: Remyjdavis90@gmail.com
     </div>
   </div>
-
   <div>
     Invoice #:
     <input id="invoiceNumber" value="INV-1001" oninput="refreshBarcode()"><br>
@@ -53,7 +56,7 @@ button { padding:8px 14px; margin-top:10px }
 <hr>
 
 <h3>Customer</h3>
-<input id="customerName" placeholder="Start typing customer…" onblur="checkNewCustomer(this.value)">
+<input id="customerName" placeholder="Customer Name" autocomplete="off" onblur="checkNewCustomer(this.value)">
 
 <h3>Invoice Items</h3>
 
@@ -64,7 +67,7 @@ button { padding:8px 14px; margin-top:10px }
   <th>Type</th>
   <th>Quantity</th>
   <th>Unit Price</th>
-  <th>Line Total</th>
+  <th>Total</th>
 </tr>
 </thead>
 <tbody></tbody>
@@ -73,15 +76,13 @@ button { padding:8px 14px; margin-top:10px }
 <button onclick="addRow()">Add Item</button>
 
 <div class="totals">
-  <div><span>Subtotal</span><span id="subTotal">$0.00</span></div>
-  <div><span>Sales Tax</span><span id="taxTotal">$0.00</span></div>
-  <div><span>Discount</span><span id="discountTotal">$0.00</span></div>
-  <div><span>Keg Deposit</span><span id="kegDeposit">$0.00</span></div>
+  <div><span>Subtotal</span><span id="sub">$0.00</span></div>
+  <div><span>Discount</span><span id="disc">$0.00</span></div>
+  <div><span>Sales Tax (6%)</span><span id="tax">$0.00</span></div>
+  <div><span>Keg Deposit</span><span id="keg">$0.00</span></div>
   <hr>
-  <div><strong>Total</strong><strong id="grandTotal">$0.00</strong></div>
+  <div><strong>Total</strong><strong id="total">$0.00</strong></div>
 </div>
-
-<hr>
 
 <button onclick="generatePDF()">Print</button>
 <button onclick="saveInvoice()">Save</button>
@@ -94,7 +95,7 @@ button { padding:8px 14px; margin-top:10px }
 <div id="customerModal" class="modal-overlay">
   <div class="modal">
     <h3>New Customer</h3>
-    <input id="mcName" placeholder="Customer Name"><br><br>
+    <input id="mcName" placeholder="Name"><br><br>
     <input id="mcAddress" placeholder="Address"><br><br>
     <select id="mcType">
       <option>Restaurant</option>
@@ -105,7 +106,7 @@ button { padding:8px 14px; margin-top:10px }
       <option>ACH</option>
       <option>Fintech</option>
     </select><br><br>
-    <button onclick="saveCustomer()">Save</button>
+    <button onclick="confirmCustomer()">Save</button>
     <button onclick="closeCustomer()">Cancel</button>
   </div>
 </div>
@@ -115,8 +116,14 @@ button { padding:8px 14px; margin-top:10px }
   <div class="modal">
     <h3>New Product</h3>
     <input id="mpName" placeholder="Product Name"><br><br>
-    <input id="mpPrice" type="number" placeholder="Base Price"><br><br>
-    <button onclick="saveProduct()">Save</button>
+    <select id="mpTypes" multiple onchange="renderPrices()">
+      <option>Case</option>
+      <option>Bottle</option>
+      <option>1/6 Keg</option>
+      <option>1/2 Keg</option>
+    </select>
+    <div id="priceInputs"></div><br>
+    <button onclick="confirmProduct()">Save</button>
     <button onclick="closeProduct()">Cancel</button>
   </div>
 </div>
@@ -124,91 +131,108 @@ button { padding:8px 14px; margin-top:10px }
 <script>
 const SALES_TAX_RATE = 0.06;
 const KEG_DEPOSIT = 30;
-const KEG_TYPES = ["1/6 Keg","1/2 Keg"];
+const knownCustomers = [];
+const knownProducts = [];
 
-let customers = {};
-let products = {};
-
-invoiceDate.innerText = new Date().toLocaleDateString();
+document.getElementById("invoiceDate").innerText = new Date().toLocaleDateString();
 refreshBarcode();
 
 function refreshBarcode(){
-  JsBarcode("#barcodeCanvas", invoiceNumber.value, {format:"CODE128",height:50});
+  JsBarcode("#barcodeCanvas", invoiceNumber.value, {
+    format:"CODE128", width:2, height:50, displayValue:false
+  });
 }
-
-function checkNewCustomer(val){
-  if(val && !customers[val]){
-    mcName.value = val;
-    customerModal.style.display="flex";
-  }
-}
-function saveCustomer(){
-  customers[mcName.value] = {
-    type: mcType.value,
-    payment: mcPayment.value
-  };
-  customerName.value = mcName.value;
-  closeCustomer();
-  recalc();
-}
-function closeCustomer(){ customerModal.style.display="none"; }
 
 function addRow(){
   const tr=document.createElement("tr");
+
   const p=document.createElement("input");
-  p.onblur=()=>!products[p.value]&&(mpName.value=p.value,productModal.style.display="flex");
-  const t=document.createElement("select"); t.multiple=true;
+  p.onblur=()=>checkNewProduct(p.value);
+
+  const t=document.createElement("select");
+  t.multiple=true;
   ["Case","Bottle","1/6 Keg","1/2 Keg"].forEach(v=>t.add(new Option(v,v)));
   const q=document.createElement("div");
-  t.onchange=()=>buildQty(q,t);
-  const pr=document.createElement("input"); pr.type="number"; pr.oninput=recalc;
-  const total=document.createElement("span");
-  tr.append(td(p),td(t),td(q),td(pr),td(total));
-  itemsTable.querySelector("tbody").append(tr);
-}
 
-function buildQty(c,s){
-  c.innerHTML="";
-  [...s.selectedOptions].forEach(o=>{
+  t.onchange=()=>{ q.innerHTML=""; [...t.selectedOptions].forEach(o=>{
     const i=document.createElement("input");
-    i.type="number"; i.value=1; i.oninput=recalc;
-    c.append(o.value+" ",i,document.createElement("br"));
-  });
-  recalc();
-}
-function td(e){const d=document.createElement("td");d.append(e);return d;}
+    i.type="number"; i.value=1; i.dataset.type=o.value;
+    i.oninput=calc;
+    q.append(o.value+" ",i,document.createElement("br"));
+  })};
 
-function recalc(){
+  const price=document.createElement("input");
+  price.type="number"; price.value=0; price.oninput=calc;
+
+  const total=document.createElement("span"); total.innerText="$0.00";
+
+  [p,t,q,price,total].forEach(e=>{
+    const td=document.createElement("td"); td.append(e); tr.append(td);
+  });
+  document.querySelector("#itemsTable tbody").append(tr);
+}
+
+function calc(){
   let subtotal=0, cases=0, kegs=0;
   document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
+    const price=+r.children[3].firstChild.value;
     let qty=0;
-    r.children[2].querySelectorAll("input").forEach(i=>qty+=+i.value||0);
-    const price=+r.children[3].firstChild.value||0;
-    r.children[1].querySelectorAll("option:checked").forEach(o=>{
-      if(o.value==="Case") cases+=qty;
-      if(KEG_TYPES.includes(o.value)) kegs+=qty;
+    r.children[2].querySelectorAll("input").forEach(i=>{
+      qty+=+i.value;
+      if(i.dataset.type==="Case") cases+=+i.value;
+      if(i.dataset.type.includes("Keg")) kegs+=+i.value;
     });
-    const line=qty*price;
+    const line=price*qty;
     r.children[4].innerText="$"+line.toFixed(2);
     subtotal+=line;
   });
-
-  const customer = customers[customerName.value];
-  const tax = customer?.type==="Restaurant" ? subtotal*SALES_TAX_RATE : 0;
-  const discount = cases>10 ? subtotal*0.10 : 0;
-  const deposit = kegs*KEG_DEPOSIT;
-
-  subTotal.innerText="$"+subtotal.toFixed(2);
-  taxTotal.innerText="$"+tax.toFixed(2);
-  discountTotal.innerText="$"+discount.toFixed(2);
-  kegDeposit.innerText="$"+deposit.toFixed(2);
-  grandTotal.innerText="$"+(subtotal+tax+deposit-discount).toFixed(2);
+  const discount=cases>10?subtotal*0.10:0;
+  const tax=customerType==="Restaurant"?subtotal*SALES_TAX_RATE:0;
+  document.getElementById("sub").innerText="$"+subtotal.toFixed(2);
+  document.getElementById("disc").innerText="$"+discount.toFixed(2);
+  document.getElementById("tax").innerText="$"+tax.toFixed(2);
+  document.getElementById("keg").innerText="$"+(kegs*KEG_DEPOSIT).toFixed(2);
+  document.getElementById("total").innerText="$"+(subtotal-discount+tax+kegs*KEG_DEPOSIT).toFixed(2);
 }
 
-function generatePDF(){ alert("PDF intact"); }
-function saveInvoice(){ alert("Save intact"); }
-function emailInvoice(){ alert("Email intact"); }
-</script>
+/* CUSTOMER */
+let customerType="Wholesaler";
+function checkNewCustomer(v){
+  if(v && !knownCustomers.includes(v)){
+    mcName.value=v; customerModal.style.display="flex";
+  }
+}
+function confirmCustomer(){
+  knownCustomers.push(mcName.value);
+  customerName.value=mcName.value;
+  customerType=mcType.value;
+  closeCustomer();
+}
+function closeCustomer(){ customerModal.style.display="none"; }
 
+/* PRODUCT */
+function checkNewProduct(v){
+  if(v && !knownProducts.includes(v)){
+    mpName.value=v; productModal.style.display="flex";
+  }
+}
+function renderPrices(){
+  priceInputs.innerHTML="";
+  [...mpTypes.selectedOptions].forEach(o=>{
+    const i=document.createElement("input");
+    i.type="number"; i.dataset.type=o.value;
+    priceInputs.append(o.value+" ",i,document.createElement("br"));
+  });
+}
+function confirmProduct(){
+  knownProducts.push(mpName.value);
+  closeProduct();
+}
+function closeProduct(){ productModal.style.display="none"; }
+
+function generatePDF(){ alert("PDF logic unchanged"); }
+function saveInvoice(){ alert("Save logic unchanged"); }
+function emailInvoice(){ alert("Email logic unchanged"); }
+</script>
 </body>
 </html>
