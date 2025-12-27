@@ -159,6 +159,7 @@ const SALES_TAX_RATE = 0.06;
 const KEG_DEPOSIT = 30;
 
 let customerListData = [];
+let productListData = [];
 
 document.getElementById("invoiceDate").innerText = new Date().toLocaleDateString();
 JsBarcode("#barcodeCanvas", invoiceNumber.value, { displayValue:false });
@@ -175,6 +176,11 @@ fetch(API + "?action=getCustomers")
       customerList.append(opt);
     });
   });
+fetch(API + "?action=getProducts")
+  .then(r => r.json())
+  .then(data => {
+    productListData = [...new Set(data.map(p => p.product))];
+  });
 
 function filterCustomers(){}
 
@@ -186,10 +192,12 @@ function checkNewCustomer(v){
 }
 function checkNewProduct(value) {
   if (!value) return;
+  if (productListData.includes(value)) return;
 
   mpProduct.value = value;
-  productModal.style.display = "flex";
+  document.getElementById("productModal").style.display = "flex";
 }
+
 
 /* FIX #1 — SAVE CUSTOMER VIA POST */
 function confirmCustomer(){
@@ -270,9 +278,12 @@ typesDiv.querySelectorAll("input[type=checkbox]").forEach(cb => {
 
   const total=document.createElement("span"); total.innerText="$0.00";
 
-  [p,t,q,price,total].forEach(e=>{
-    const td=document.createElement("td"); td.append(e); tr.append(td);
-  });
+  [p, typesDiv, qtyContainer, price, total].forEach(e => {
+  const td = document.createElement("td");
+  td.append(e);
+  tr.append(td);
+});
+
   document.querySelector("#itemsTable tbody").append(tr);
 }
 
@@ -327,18 +338,30 @@ function confirmProduct() {
 }
 
 
-function calc(){
-  let subtotal=0;
-  document.querySelectorAll("#itemsTable tbody tr").forEach(r=>{
-    const qty=+r.children[2].firstChild.value;
-    const price=+r.children[3].firstChild.value;
-    const line=qty*price;
-    r.children[4].innerText="$"+line.toFixed(2);
-    subtotal+=line;
+function calc() {
+  let subtotal = 0;
+
+  document.querySelectorAll("#itemsTable tbody tr").forEach(row => {
+    const qtyContainer = row.children[2];
+    const priceInput = row.children[3].querySelector("input");
+    const totalCell = row.children[4];
+
+    const unitPrice = Number(priceInput.value || 0);
+    let lineTotal = 0;
+
+    qtyContainer.querySelectorAll("input[type=number]").forEach(qtyInput => {
+      const qty = Number(qtyInput.value || 0);
+      lineTotal += qty * unitPrice;
+    });
+
+    totalCell.innerText = "$" + lineTotal.toFixed(2);
+    subtotal += lineTotal;
   });
-  document.getElementById("sub").innerText="$"+subtotal.toFixed(2);
-  document.getElementById("total").innerText="$"+subtotal.toFixed(2);
+
+  document.getElementById("sub").innerText = "$" + subtotal.toFixed(2);
+  document.getElementById("total").innerText = "$" + subtotal.toFixed(2);
 }
+
 
 /* FIX #2 — SAVE INVOICE */
 async function saveInvoice(){
