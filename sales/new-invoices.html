@@ -132,14 +132,14 @@ button { padding:8px 14px; margin-top:10px }
 <hr>
 
 <h3>Customer</h3>
- <input
- <input
+<input
   id="customerName"
   list="customerList"
   placeholder="Start typing customer…"
   autocomplete="off"
   onchange="handleCustomerSelect()"
   onblur="checkNewCustomer(this.value)">
+
 
 <input id="customerAddress" placeholder="Customer address" readonly>
 
@@ -349,6 +349,15 @@ function confirmCustomer(){
     customerList.append(opt);
     customerName.value = name;
     updatePaymentNote(payment);
+  customerMap[name] = {
+  address,
+  type,
+  payment
+};
+
+customerAddress.value = address;
+applyCustomerRules(customer);
+
     closeCustomer();
   });
 }
