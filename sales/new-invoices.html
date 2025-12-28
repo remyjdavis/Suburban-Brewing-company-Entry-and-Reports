@@ -132,7 +132,6 @@ button { padding:8px 14px; margin-top:10px }
 <hr>
 
 <h3>Customer</h3>
-<h3>Customer</h3>
 
 <input
   id="customerName"
@@ -363,7 +362,12 @@ customerList.append(opt);
 customerName.value = name;
 customerAddress.value = address;
 
-applyCustomerRules(customer);
+applyCustomerRules({
+  address,
+  type,
+  payment
+});
+
 closeCustomer();
 
   });
