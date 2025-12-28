@@ -132,7 +132,12 @@ button { padding:8px 14px; margin-top:10px }
 <hr>
 
 <h3>Customer</h3>
-  <input id="customerAddress" placeholder="Customer address" readonly>
+ <input
+  id="customerName"
+  placeholder="Start typing customer…"
+  list="customerList"
+  autocomplete="off"
+  onblur="checkNewCustomer(this.value)">
 <datalist id="customerList"></datalist>
 
 <h3>Invoice Items</h3>
@@ -295,9 +300,6 @@ fetch(API + "?action=getProducts")
       dl.appendChild(opt);
     });
   });
-
-
-function filterCustomers(){}
 
 function checkNewCustomer(v){
   if(v && !customerListData.includes(v)){
