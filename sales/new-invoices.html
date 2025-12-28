@@ -132,6 +132,8 @@ button { padding:8px 14px; margin-top:10px }
 <hr>
 
 <h3>Customer</h3>
+<h3>Customer</h3>
+
 <input
   id="customerName"
   list="customerList"
@@ -140,10 +142,13 @@ button { padding:8px 14px; margin-top:10px }
   onchange="handleCustomerSelect()"
   onblur="checkNewCustomer(this.value)">
 
-
-<input id="customerAddress" placeholder="Customer address" readonly>
+<input
+  id="customerAddress"
+  placeholder="Customer address"
+  readonly>
 
 <datalist id="customerList"></datalist>
+
 
 <h3>Invoice Items</h3>
 <table id="itemsTable">
