@@ -132,12 +132,14 @@ button { padding:8px 14px; margin-top:10px }
 <hr>
 
 <h3>Customer</h3>
- <input
+ <<input
   id="customerName"
   placeholder="Start typing customer…"
   list="customerList"
   autocomplete="off"
+  oninput="handleCustomerSelect()"
   onblur="checkNewCustomer(this.value)">
+
 <datalist id="customerList"></datalist>
 
 <h3>Invoice Items</h3>
@@ -817,6 +819,18 @@ function loadImageAsBase64(url) {
     img.onerror = reject;
     img.src = url;
   });
+}
+function handleCustomerSelect() {
+  const name = customerName.value;
+  const customer = customerMap[name];
+
+  if (!customer) return;
+
+  // Populate address
+  customerAddress.value = customer.address || "";
+
+  // Apply tax + payment rules
+  applyCustomerRules(customer);
 }
 
 </script>
