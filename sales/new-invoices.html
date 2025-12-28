@@ -132,22 +132,10 @@ button { padding:8px 14px; margin-top:10px }
 <hr>
 
 <h3>Customer</h3>
-
-<input
-  id="customerName"
-  list="customerList"
-  placeholder="Start typing customer…"
-  autocomplete="off"
-  oninput="handleCustomerTyping(this.value)">
-
-
-<input
-  id="customerAddress"
-  placeholder="Customer address"
-  readonly>
-
+<input id="customerName" placeholder="Start typing customer…" list="customerList" autocomplete="off"
+       oninput="filterCustomers(this.value)" onblur="checkNewCustomer(this.value)">
+  <input id="customerAddress" placeholder="Customer address" readonly>
 <datalist id="customerList"></datalist>
-
 
 <h3>Invoice Items</h3>
 <table id="itemsTable">
@@ -245,7 +233,7 @@ button { padding:8px 14px; margin-top:10px }
 
 
 <script>
-const API = "https://script.google.com/macros/s/AKfycbyLr0pCk94nzH5phx05sPDfRfwxeftUw6x76g4Sifa4P3coWQUoRnUykB93lWibgho/exec";
+const API = "https://script.google.com/macros/s/AKfycbys580shBiRLtAW0jAYFoinwKJrycSJQyW8qy95nvLr7dxqOGtzI3e_h9QQn8-ULTT3/exec";
 const SALES_TAX_RATE = 0.06;
 const KEG_DEPOSIT_RATE = 30;
 
@@ -264,64 +252,54 @@ JsBarcode(
 );
 
 /* LOAD CUSTOMERS */
-fetch(API, {
-  method: "POST",
-  headers: { "Content-Type": "text/plain" },
-  body: JSON.stringify({ action: "getCustomers" })
-})
-.then(res => res.json())
-.then(data => {
-  customerListData = [];
-  customerMap = {};
-  customerList.innerHTML = "";
+fetch(API + "?action=getCustomers")
+  .then(res => res.json())
+  .then(data => {
+    customerListData = [];
+    customerMap = {};
+    customerList.innerHTML = "";
 
-  data.forEach(c => {
-    customerListData.push(c.name);
+    data.forEach(c => {
+      customerListData.push(c.name);
 
-    customerMap[c.name] = {
-      address: c.address,
-      type: c.type,
-      payment: c.payment
-    };
+      customerMap[c.name] = {
+        address: c.address,
+        type: c.type,       // Restaurant / Wholesaler
+        payment: c.payment  // Check / Fintech
+      };
 
-    const opt = document.createElement("option");
-    opt.value = c.name;
-    customerList.appendChild(opt);
+      const opt = document.createElement("option");
+      opt.value = c.name;
+      customerList.append(opt);
+    });
   });
 
-  console.log("Customers loaded:", customerMap);
-})
-.catch(err => console.error("Customer load failed", err));
+fetch(API + "?action=getProducts")
+  .then(r => r.json())
+  .then(data => {
+    productData = {};
+    productNames = [];
 
-fetch(API, {
-  method: "POST",
-  headers: { "Content-Type": "text/plain" },
-  body: JSON.stringify({ action: "getProducts" })
-})
-.then(res => res.json())
-.then(data => {
-  productData = {};
-  productNames = [];
+    data.forEach(p => {
+      if (!productData[p.product]) {
+        productData[p.product] = {};
+        productNames.push(p.product);
+      }
+      productData[p.product][p.type] = Number(p.price);
+    });
 
-  data.forEach(p => {
-    if (!productData[p.product]) {
-      productData[p.product] = {};
-      productNames.push(p.product);
-    }
-    productData[p.product][p.type] = Number(p.price);
+    // populate datalist
+    const dl = document.getElementById("productList");
+    dl.innerHTML = "";
+    productNames.forEach(name => {
+      const opt = document.createElement("option");
+      opt.value = name;
+      dl.appendChild(opt);
+    });
   });
 
-  const dl = document.getElementById("productList");
-  dl.innerHTML = "";
-  productNames.forEach(name => {
-    const opt = document.createElement("option");
-    opt.value = name;
-    dl.appendChild(opt);
-  });
 
-  console.log("Products loaded:", productData);
-})
-.catch(err => console.error("Product load failed", err));
+function filterCustomers(){}
 
 function checkNewCustomer(v){
   if(v && !customerListData.includes(v)){
@@ -360,34 +338,28 @@ function confirmCustomer(){
     })
   }).then(() => {
     customerListData.push(name);
-
-customerMap[name] = {
-  address,
-  type,
-  payment
-};
-
-const opt = document.createElement("option");
-opt.value = name;
-customerList.append(opt);
-
-customerName.value = name;
-customerAddress.value = address;
-
-applyCustomerRules({
-  address,
-  type,
-  payment
-});
-
-closeCustomer();
-
+    const opt = document.createElement("option");
+    opt.value = name;
+    customerList.append(opt);
+    customerName.value = name;
+    updatePaymentNote(payment);
+    closeCustomer();
   });
 }
 
 function closeCustomer(){
   customerModal.style.display="none";
 }
+  customerName.addEventListener("change", () => {
+  const customer = customerMap[customerName.value];
+  if (!customer) return;
+
+  // ✅ Visible
+  customerAddress.value = customer.address || "";
+
+  // ✅ Hidden logic
+  applyCustomerRules(customer);
+});
 
 function closeProduct() {
   document.getElementById("productModal").style.display = "none";
@@ -515,20 +487,16 @@ function confirmProduct() {
   }
 
   Promise.all(
-  productsToSave.map(p => {
-    return fetch(API, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify({
+    productsToSave.map(p => {
+      const params = new URLSearchParams({
         action: "saveProduct",
         product: p.product,
         type: p.type,
         price: p.price
-      })
-    }).then(r => r.json());
-  })
-)
+      });
 
+      return fetch(API + "?" + params.toString()).then(r => r.json());
+    })
   ).then(() => {
 
     // 🔁 UPDATE LOCAL CACHE (NO RELOAD)
@@ -676,25 +644,20 @@ async function saveInvoice() {
   });
 
   await fetch(API, {
-  method: "POST",
-  headers: { "Content-Type": "text/plain" }, // 🔑 NO PREFLIGHT
-  body: JSON.stringify({
-  action: "saveInvoice",
-  invoice: invoiceNumber.value,
-  customer: customerName.value,
-  subtotal,
-  tax: parseFloat(tax.innerText.replace("$","")) || 0,
-kegDeposit: parseFloat(keg.innerText.replace("$","")) || 0,
-total: parseFloat(total.innerText.replace("$","")) || 0,
-discount: parseFloat(disc.innerText.replace("$","")) || 0,
-customerAddress: customerAddress.value,
-customerType: customerMap[customerName.value]?.type || "",
-paymentMethod: customerMap[customerName.value]?.payment || "",
-
-  pdfBase64
-})
-});
-
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "saveInvoice",
+      invoice: invoiceNumber.value,
+      customer: customerName.value,
+      items,
+      subtotal,
+      tax: tax.innerText,
+      kegDeposit: keg.innerText,
+      total: total.innerText,
+      pdfBase64
+    })
+  });
 
   alert("Invoice saved successfully");
 }
@@ -801,8 +764,7 @@ async function emailInvoice() {
 
   await fetch(API, {
     method: "POST",
-    headers: { "Content-Type": "text/plain" },
-
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       action: "emailInvoice",
       invoice: invoiceNumber.value,
@@ -849,34 +811,6 @@ function loadImageAsBase64(url) {
     img.onerror = reject;
     img.src = url;
   });
-}
-function handleCustomerSelect() {
-  const name = customerName.value;
-  const customer = customerMap[name];
-
-  if (!customer) return;
-
-  // Populate address
-  customerAddress.value = customer.address || "";
-
-  // Apply tax + payment rules
-  applyCustomerRules(customer);
-}
-function handleCustomerTyping(value) {
-  const customer = customerMap[value];
-  if (customer) {
-    customerAddress.value = customer.address || "";
-    applyCustomerRules(customer);
-  }
-}
-function maybeCreateCustomer() {
-  const name = customerName.value.trim();
-  if (!name) return;
-
-  if (!customerMap[name]) {
-    mcName.value = name;
-    customerModal.style.display = "flex";
-  }
 }
 
 </script>
