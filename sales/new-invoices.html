@@ -245,7 +245,7 @@ button { padding:8px 14px; margin-top:10px }
 
 
 <script>
-const API = "https://script.google.com/macros/s/AKfycbztkNYNLivyYbbIUrnbR_Cy9mP0KF1fZ3xQZX_AZeCO3J0qsBGslsxjRwdVOAhjfkRX/exec";
+const API = "https://script.google.com/macros/s/AKfycbyLr0pCk94nzH5phx05sPDfRfwxeftUw6x76g4Sifa4P3coWQUoRnUykB93lWibgho/exec";
 const SALES_TAX_RATE = 0.06;
 const KEG_DEPOSIT_RATE = 30;
 
@@ -264,42 +264,65 @@ JsBarcode(
 );
 
 /* LOAD CUSTOMERS */
-fetch(API + "?action=getCustomers")
-  .then(res => res.json())
-  .then(data => {
-    customerListData = [];
-    customerMap = {};
-    customerList.innerHTML = "";
+fetch(API, {
+  method: "POST",
+  headers: { "Content-Type": "text/plain" },
+  body: JSON.stringify({ action: "getCustomers" })
+})
+.then(res => res.json())
+.then(data => {
+  customerListData = [];
+  customerMap = {};
+  customerList.innerHTML = "";
 
-    data.forEach(c => {
-      customerListData.push(c.name);
+  data.forEach(c => {
+    customerListData.push(c.name);
 
-      customerMap[c.name] = {
-        address: c.address,
-        type: c.type,
-        payment: c.payment
-      };
+    customerMap[c.name] = {
+      address: c.address,
+      type: c.type,
+      payment: c.payment
+    };
 
-      const opt = document.createElement("option");
-      opt.value = c.name;
-      customerList.append(opt);
-    });
+    const opt = document.createElement("option");
+    opt.value = c.name;
+    customerList.appendChild(opt);
   });
 
+  console.log("Customers loaded:", customerMap);
+})
+.catch(err => console.error("Customer load failed", err));
 
-fetch(API + "?action=getProducts")
-  .then(r => r.json())
-  .then(data => {
-    productData = {};
-    productNames = [];
+fetch(API, {
+  method: "POST",
+  headers: { "Content-Type": "text/plain" },
+  body: JSON.stringify({ action: "getProducts" })
+})
+.then(res => res.json())
+.then(data => {
+  productData = {};
+  productNames = [];
 
-    data.forEach(p => {
-      if (!productData[p.product]) {
-        productData[p.product] = {};
-        productNames.push(p.product);
-      }
-      productData[p.product][p.type] = Number(p.price);
-    });
+  data.forEach(p => {
+    if (!productData[p.product]) {
+      productData[p.product] = {};
+      productNames.push(p.product);
+    }
+    productData[p.product][p.type] = Number(p.price);
+  });
+
+  const dl = document.getElementById("productList");
+  dl.innerHTML = "";
+  productNames.forEach(name => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    dl.appendChild(opt);
+  });
+
+  console.log("Products loaded:", productData);
+})
+.catch(err => console.error("Product load failed", err));
+
 
     // populate datalist
     const dl = document.getElementById("productList");
