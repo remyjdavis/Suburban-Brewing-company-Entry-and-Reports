@@ -132,13 +132,20 @@ button { padding:8px 14px; margin-top:10px }
 <hr>
 
 <h3>Customer</h3>
- <<input
+ <input
   id="customerName"
-  placeholder="Start typing customer…"
   list="customerList"
+  placeholder="Start typing customer…"
   autocomplete="off"
-  oninput="handleCustomerSelect()"
+  oninput="
+    const c = customerMap[this.value];
+    if (c) {
+      customerAddress.value = c.address || '';
+      applyCustomerRules(c);
+    }
+  "
   onblur="checkNewCustomer(this.value)">
+
 
 <datalist id="customerList"></datalist>
 
@@ -269,8 +276,8 @@ fetch(API + "?action=getCustomers")
 
       customerMap[c.name] = {
         address: c.address,
-        type: c.type,       // Restaurant / Wholesaler
-        payment: c.payment  // Check / Fintech
+        type: c.type,
+        payment: c.payment
       };
 
       const opt = document.createElement("option");
@@ -278,6 +285,7 @@ fetch(API + "?action=getCustomers")
       customerList.append(opt);
     });
   });
+
 
 fetch(API + "?action=getProducts")
   .then(r => r.json())
