@@ -344,21 +344,23 @@ function confirmCustomer(){
     })
   }).then(() => {
     customerListData.push(name);
-    const opt = document.createElement("option");
-    opt.value = name;
-    customerList.append(opt);
-    customerName.value = name;
-    updatePaymentNote(payment);
-  customerMap[name] = {
+
+customerMap[name] = {
   address,
   type,
   payment
 };
 
-customerAddress.value = address;
-applyCustomerRules(customer);
+const opt = document.createElement("option");
+opt.value = name;
+customerList.append(opt);
 
-    closeCustomer();
+customerName.value = name;
+customerAddress.value = address;
+
+applyCustomerRules(customer);
+closeCustomer();
+
   });
 }
 
