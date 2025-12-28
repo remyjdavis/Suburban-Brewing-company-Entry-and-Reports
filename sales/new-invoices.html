@@ -323,17 +323,6 @@ fetch(API, {
 })
 .catch(err => console.error("Product load failed", err));
 
-
-    // populate datalist
-    const dl = document.getElementById("productList");
-    dl.innerHTML = "";
-    productNames.forEach(name => {
-      const opt = document.createElement("option");
-      opt.value = name;
-      dl.appendChild(opt);
-    });
-  });
-
 function checkNewCustomer(v){
   if(v && !customerListData.includes(v)){
     mcName.value = v;
