@@ -133,18 +133,14 @@ button { padding:8px 14px; margin-top:10px }
 
 <h3>Customer</h3>
  <input
+ <input
   id="customerName"
   list="customerList"
   placeholder="Start typing customer…"
   autocomplete="off"
-  oninput="
-    const c = customerMap[this.value];
-    if (c) {
-      customerAddress.value = c.address || '';
-      applyCustomerRules(c);
-    }
-  "
+  onchange="handleCustomerSelect()"
   onblur="checkNewCustomer(this.value)">
+
 <input id="customerAddress" placeholder="Customer address" readonly>
 
 <datalist id="customerList"></datalist>
@@ -360,16 +356,6 @@ function confirmCustomer(){
 function closeCustomer(){
   customerModal.style.display="none";
 }
-  customerName.addEventListener("change", () => {
-  const customer = customerMap[customerName.value];
-  if (!customer) return;
-
-  // ✅ Visible
-  customerAddress.value = customer.address || "";
-
-  // ✅ Hidden logic
-  applyCustomerRules(customer);
-});
 
 function closeProduct() {
   document.getElementById("productModal").style.display = "none";
