@@ -651,10 +651,14 @@ async function saveInvoice() {
   invoice: invoiceNumber.value,
   customer: customerName.value,
   subtotal,
-  tax: tax.innerText,
-  discount: disc.innerText,
-  kegDeposit: keg.innerText,
-  total: total.innerText,
+  tax: parseFloat(tax.innerText.replace("$","")) || 0,
+kegDeposit: parseFloat(keg.innerText.replace("$","")) || 0,
+total: parseFloat(total.innerText.replace("$","")) || 0,
+discount: parseFloat(disc.innerText.replace("$","")) || 0,
+customerAddress: customerAddress.value,
+customerType: customerMap[customerName.value]?.type || "",
+paymentMethod: customerMap[customerName.value]?.payment || ""
+
   pdfBase64
 })
 });
