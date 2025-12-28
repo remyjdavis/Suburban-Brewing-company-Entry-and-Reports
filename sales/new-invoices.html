@@ -769,7 +769,8 @@ async function emailInvoice() {
 
   await fetch(API, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "text/plain" },
+
     body: JSON.stringify({
       action: "emailInvoice",
       invoice: invoiceNumber.value,
