@@ -138,8 +138,8 @@ button { padding:8px 14px; margin-top:10px }
   list="customerList"
   placeholder="Start typing customer…"
   autocomplete="off"
-  onchange="handleCustomerSelect()"
-  onblur="checkNewCustomer(this.value)">
+  oninput="handleCustomerTyping(this.value)">
+
 
 <input
   id="customerAddress"
@@ -515,16 +515,20 @@ function confirmProduct() {
   }
 
   Promise.all(
-    productsToSave.map(p => {
-      const params = new URLSearchParams({
+  productsToSave.map(p => {
+    return fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({
         action: "saveProduct",
         product: p.product,
         type: p.type,
         price: p.price
-      });
+      })
+    }).then(r => r.json());
+  })
+)
 
-      return fetch(API + "?" + params.toString()).then(r => r.json());
-    })
   ).then(() => {
 
     // 🔁 UPDATE LOCAL CACHE (NO RELOAD)
@@ -857,6 +861,22 @@ function handleCustomerSelect() {
 
   // Apply tax + payment rules
   applyCustomerRules(customer);
+}
+function handleCustomerTyping(value) {
+  const customer = customerMap[value];
+  if (customer) {
+    customerAddress.value = customer.address || "";
+    applyCustomerRules(customer);
+  }
+}
+function maybeCreateCustomer() {
+  const name = customerName.value.trim();
+  if (!name) return;
+
+  if (!customerMap[name]) {
+    mcName.value = name;
+    customerModal.style.display = "flex";
+  }
 }
 
 </script>
